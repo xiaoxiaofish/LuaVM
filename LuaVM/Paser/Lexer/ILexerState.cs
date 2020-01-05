@@ -13,7 +13,6 @@ namespace LuaVM.Paser.Lexer
         private static string keyWordPath;
         protected static List<char> tokenText = new List<char>();
         public static StartLexerState startLexerState = new StartLexerState();
-        protected static EndLexerState endLexerState;
         protected static NumberLexerState numberLexerState = new NumberLexerState();
         protected static IdentifierLexerState identifierLexerState = new IdentifierLexerState();
         protected static DoubleOperatorLexerState doubleOperatorLexerState = new DoubleOperatorLexerState();
@@ -68,6 +67,7 @@ namespace LuaVM.Paser.Lexer
                 case '/':
                 case '.':
                 case '~':
+                case ':':
                     EnterDoubleOperationState(lexer);
                     break;
                 case '(':
@@ -314,28 +314,38 @@ namespace LuaVM.Paser.Lexer
 
     }
 
-    public class EndLexerState : ILexerState
-    {
-        protected override void Separator(Lexer lexer)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
     public class NumberLexerState : ILexerState
     {
+        int Commcount = 0;
         protected override void Separator(Lexer lexer)
         {
+            if(ch == '.' && Commcount == 0)
+            {
+                Commcount = 1;
+                return;
+            }
             PopLastChar();
             Token token = new Token(TokenType.Number, GetTokenStringText(), lexer.Line);
             tokenText.Add(ch);
             lexer.AddToken(token);
+            Commcount = 0;
         }
         protected override void EnterNumberState(Lexer lexer)
         {
 
         }
 
+        protected override void EnterDoubleOperationState(Lexer lexer)
+        {
+            if (ch == '.' && Commcount == 0)
+            {
+                return;
+            }
+            else
+            {
+                base.EnterDoubleOperationState(lexer);
+            }
+        }
     }
 
     public class IdentifierLexerState : ILexerState
@@ -346,7 +356,9 @@ namespace LuaVM.Paser.Lexer
             string identifier = GetTokenStringText();
             if (IsKeyWord(identifier))
             {
-                Token token = new Token(TokenType.Keyword, identifier, lexer.Line);
+                string UpIdentifier = identifier.Substring(0, 1).ToUpper() + identifier.Substring(1, identifier.Length - 1);
+                TokenType type = (TokenType)Enum.Parse(typeof(TokenType), UpIdentifier);
+                Token token = new Token(type, identifier, lexer.Line);
                 tokenText.Add(ch);
                 lexer.AddToken(token);
             }
@@ -460,6 +472,13 @@ namespace LuaVM.Paser.Lexer
                         lexer.LexerState = startLexerState;
                         return;
                     }
+                case "::":
+                    {
+                        Token token = new Token(TokenType.DoubleLable, GetTokenStringText(), lexer.Line);
+                        lexer.AddToken(token);
+                        lexer.LexerState = startLexerState;
+                        return;
+                    }
                 default:
                     break;
             }
@@ -499,6 +518,12 @@ namespace LuaVM.Paser.Lexer
                 case '~':
                     {
                         Token token = new Token(TokenType.Error, firstCh.ToString(), lexer.Line);
+                        lexer.AddToken(token);
+                        break;
+                    }
+                case ':':
+                    {
+                        Token token = new Token(TokenType.SingleLable, firstCh.ToString(), lexer.Line);
                         lexer.AddToken(token);
                         break;
                     }

@@ -9,17 +9,19 @@ namespace LuaVM.Paser
     public enum TokenType
     {
         Plus = 0,   // +
-        Minus,  // -
         Star,   // *
-        Slash,  // /
-        Len,// #
-        Error,//~
+        Slash,  // /      
+        Smaller,     // <
+        Percent,//%
+        Connect,// ..
         NotEqual,// ~=
         BiggerEqual, // >=
         Bigger,     // >
         Equal,     // ==
         SmallerEqual,   // <=
-        Smaller,     // <
+        Minus,  // -
+        Len,// #
+        Error,//~
 
         SemiColon, // ;
         LeftParen, // (
@@ -39,14 +41,38 @@ namespace LuaVM.Paser
         Assignment,// =
         DoublePlus,//++
         DoubleMinus,//--
-        Connect,// ..
+        DoubleLable,// ::
+        SingleLable,// :
         Identifier,     //标识符
 
         Nil, //无效值
         Number,     //表示双精度类型的实浮点数
         String, //字符串字面量
         Boolean,//布尔类型
-        Keyword,//关键字
+        For,//关键字
+        While,
+        Function,
+        Userdata,
+        Thread,
+        Table,
+        Local,
+        If,
+        Else,
+        Elseif,
+        Break,
+        True,
+        False,
+        Do,
+        Return,
+        End,
+        And,
+        Not,
+        Or,
+        In,
+        Until,
+        Then,
+        Repeat,
+        Eof,
     }
     public class Token
     {
@@ -55,8 +81,8 @@ namespace LuaVM.Paser
         private int line;
 
         public TokenType TokenType { get => tokenType; }
-        public string TokenValue { get => tokenValue;}
-        public int Line { get => line;}
+        public string TokenValue { get => tokenValue; }
+        public int Line { get => line; }
 
         public Token(TokenType tokenType, string tokenValue, int line)
         {

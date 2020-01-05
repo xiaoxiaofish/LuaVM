@@ -91,6 +91,8 @@ namespace LuaVM.Paser.Lexer
                     break;
                 }
             }
+            Token endToken = new Token(TokenType.Eof, "", line);
+            tokenList.Add(endToken);
         }
     }
 }
