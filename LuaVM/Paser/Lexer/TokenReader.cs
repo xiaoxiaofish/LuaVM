@@ -45,6 +45,7 @@ namespace LuaVM.Paser
         {
             if(position < tokenNum)
             {
+                Console.WriteLine(position);
                 return tokenList[position++];
             }
             else
@@ -82,7 +83,7 @@ namespace LuaVM.Paser
         {
             if (position < tokenNum)
             {
-                return tokenList[position + 1];
+                return tokenList[position];
             }
             else
             {

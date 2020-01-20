@@ -14,7 +14,7 @@
     <Deterministic>true</Deterministic>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -23,6 +23,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -44,6 +45,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Codegen\BinaryChunk.cs" />
+    <Compile Include="Codegen\Codegen.cs" />
     <Compile Include="Memory\MemoryBlock.cs" />
     <Compile Include="Memory\MemoryDistributor.cs" />
     <Compile Include="Paser\Lexer\ILexerState.cs" />
@@ -54,6 +57,12 @@
     <Compile Include="Paser\Lexer\TokenReader.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="VM\Instruction.cs" />
+    <Compile Include="VM\LuaAPI\LuaOperator.cs" />
+    <Compile Include="VM\LuaAPI\LuaStack.cs" />
+    <Compile Include="VM\LuaAPI\LuaState.cs" />
+    <Compile Include="VM\LuaValue.cs" />
+    <Compile Include="VM\LuaVM.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

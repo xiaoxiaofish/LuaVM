@@ -56,6 +56,10 @@ namespace LuaVM.Paser.Lexer
             }
         }
 
+        public void Undo()
+        {
+            index--;
+        }
 
         public void PrintAllToken()
         {

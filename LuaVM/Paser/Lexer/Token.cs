@@ -11,14 +11,8 @@ namespace LuaVM.Paser
         Plus = 0,   // +
         Star,   // *
         Slash,  // /      
-        Smaller,     // <
         Percent,//%
         Connect,// ..
-        NotEqual,// ~=
-        BiggerEqual, // >=
-        Bigger,     // >
-        Equal,     // ==
-        SmallerEqual,   // <=
         Minus,  // -
         Len,// #
         Error,//~
@@ -34,17 +28,28 @@ namespace LuaVM.Paser
         LeftBig,//{
         RightBig,//}
 
+        Smaller,     // <
+        NotEqual,// ~=
+        BiggerEqual, // >=
+        Bigger,     // >
+        Equal,     // ==
+        SmallerEqual,   // <=
         SlashAssignment,// /=
         PlusAssignment, // +=
         MinusAssignment, // -=
         StarAssignment, // *=
+
         Assignment,// =
+
+        OrOperation,// |
         DoublePlus,//++
         DoubleMinus,//--
         DoubleLable,// ::
         SingleLable,// :
+        Vararg, // ...
         Identifier,     //标识符
 
+        Self,
         Nil, //无效值
         Number,     //表示双精度类型的实浮点数
         String, //字符串字面量

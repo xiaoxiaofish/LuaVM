@@ -446,6 +446,20 @@ namespace LuaVM.Paser.Lexer
                     }
                 case "..":
                     {
+                        ReadChar(lexer);
+                        if(ch == '.')
+                        {
+                            Token token1 = new Token(TokenType.Vararg, GetTokenStringText(), lexer.Line);
+                            lexer.AddToken(token1);
+                            lexer.LexerState = startLexerState;
+                            return;
+                        }
+                        else
+                        {
+                            lexer.Undo();
+                            PopLastChar();
+                            ch = tokenText.Last();
+                        }
                         Token token = new Token(TokenType.Connect, GetTokenStringText(), lexer.Line);
                         lexer.AddToken(token);
                         lexer.LexerState = startLexerState;
