@@ -28,8 +28,10 @@ namespace LuaVM
 
             //   string s = ss.ReadToEnd();
             //   Console.WriteLine(s);
-
+           
             Console.Read();
         }
+
+      
     }
 }

@@ -61,6 +61,7 @@
     <Compile Include="VM\LuaAPI\LuaOperator.cs" />
     <Compile Include="VM\LuaAPI\LuaStack.cs" />
     <Compile Include="VM\LuaAPI\LuaState.cs" />
+    <Compile Include="VM\Table\LuaTable.cs" />
     <Compile Include="VM\LuaValue.cs" />
     <Compile Include="VM\LuaVM.cs" />
   </ItemGroup>

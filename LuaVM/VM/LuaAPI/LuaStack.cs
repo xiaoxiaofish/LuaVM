@@ -39,6 +39,8 @@ namespace LuaVM.VM.LuaAPI
         {
             try
             {
+                if (index < 0)
+                    index = AbsIndex(index);
                 return stack[index - 1];
             }
             catch(Exception e)
@@ -51,6 +53,8 @@ namespace LuaVM.VM.LuaAPI
         {
             try
             {
+                if (index < 0)
+                    index = AbsIndex(index);
                 stack[index] = luaValue;
             }
             catch (Exception e)
@@ -75,11 +79,15 @@ namespace LuaVM.VM.LuaAPI
 
         public void Reverse(int startIndex, int num)
         {
+            if (startIndex < 0)
+                startIndex = AbsIndex(startIndex);
             stack.Reverse(startIndex, num);
         }
 
         public void Remove(int index)
         {
+            if (index < 0)
+                index = AbsIndex(index);
             stack.RemoveAt(index);
         }
 
@@ -93,6 +101,8 @@ namespace LuaVM.VM.LuaAPI
 
         public void Insert(int index,LuaValue luaValue)
         {
+            if (index < 0)
+                index = AbsIndex(index);
             stack.Insert(index, luaValue);
         }
 

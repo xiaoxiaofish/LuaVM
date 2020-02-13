@@ -3,28 +3,87 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using LuaVM.Codegen;
+using LuaVM.Paser;
+using LuaVM.VM.Table;
 namespace LuaVM.VM.LuaAPI
 {
     public class LuaState
     {
         LuaStack stack;
         int pc;
+        Prototype prototype;
+        LuaOperator LuaOperator;
         public int Pc { get => pc; set => pc = value; }
-        public void AddPC()
-        {
-            pc++;
-        }
-        public LuaState()
+        public LuaState(Prototype prototype)
         {
             stack = new LuaStack();
             stack.CreatStack(0);
             Pc = 0;
+            this.prototype = prototype;
+            LuaOperator = new LuaOperator();
         }
 
+        public void AddPC()
+        {
+            pc++;
+        }
+
+        public void AddPC(int step)
+        {
+            pc += step;
+        }
+
+        /// <summary>
+        /// 读取一条指令
+        /// </summary>
+        /// <returns></returns>
+        public uint Fetch()
+        {
+            return prototype.Code[pc++];
+        }
+
+        /// <summary>
+        /// 从常量表中读取指定常量推入栈顶
+        /// </summary>
+        /// <param name="index"></param>
+        public void GetConstVar(int index)
+        {
+            stack.Push(prototype.ConstVars[index]);
+        }
+
+        /// <summary>
+        /// 根据参数，当参数 > 0xff,将 rk & 0xff索引处常量推入栈顶，否则将栈rk处变量推入栈顶
+        /// </summary>
+        /// <returns></returns>
+        public void GetRK(int rk)
+        {
+            if(rk > 0xff)
+            {
+                GetConstVar(rk & 0xff);
+            }
+            else
+            {
+                PushValueFromIndex(rk + 1);
+            }
+        }
+
+        /// <summary>
+        /// 获得栈顶索引
+        /// </summary>
+        /// <returns></returns>
         public int GetStackTop()
         {
             return stack.Top;
+        }
+
+        /// <summary>
+        /// 获得栈顶元素
+        /// </summary>
+        /// <returns></returns>
+        public LuaValue GetTopValue()
+        {
+            return stack.Get(stack.Top - 1);
         }
 
         public int AbsIndex(int index)
@@ -64,11 +123,29 @@ namespace LuaVM.VM.LuaAPI
         }
 
         /// <summary>
-        /// 弹出栈顶元素，然后覆盖目标索引位置
+        /// 将指定索引处的值推到栈顶
+        /// </summary>
+        /// <param name="index"></param>
+        public void PushValueFromIndex(int index)
+        {
+            Push(Get(index));
+        }
+
+        /// <summary>
+        /// 弹出栈顶元素，然后用指定值覆盖目标索引位置
         /// </summary>
         public void Replace(int index, LuaValue luaValue)
         {
             stack.Pop();
+            stack.Set(index, luaValue);
+        }
+
+        /// <summary>
+        /// 弹出栈顶元素，然后覆盖目标索引位置
+        /// </summary>
+        public void Replace(int index)
+        {
+            LuaValue luaValue =  stack.Pop();
             stack.Set(index, luaValue);
         }
 
@@ -216,7 +293,42 @@ namespace LuaVM.VM.LuaAPI
             }
         }
 
-        //public 
+        public void MathOperation(TokenType opType)
+        {
+            LuaOperator.MathOperation(this, opType);
+        }
+
+        public void Concat(int number)
+        {
+            LuaOperator.Concat(this, number);
+        }
+
+        public void Len(int index)
+        {
+            LuaOperator.Len(this, index);
+        }
+
+        public LuaValue Compare(int index1, int index2, TokenType opType)
+        {
+            return LuaOperator.Compare(this, index1, index2, opType);
+        }
+
+        /// <summary>
+        /// 创建一个预估计了大小的LuaTable推入栈顶
+        /// </summary>
+        public void CreatLuaTable(int nArry, int nRec)
+        {
+            stack.Push(new LuaValue(new LuaTable(nArry, nRec), LuaValueType.Table));
+        }
+
+        /// <summary>
+        /// 创建一个空table推入栈顶
+        /// </summary>
+        public void NewTable()
+        {
+            CreatLuaTable(0, 0);
+        }
+
 
     }
 }

@@ -31,11 +31,11 @@ namespace LuaVM.VM.LuaAPI
             LuaValue result = operatorDic[opType](luaValue1, luaValue2);
             luaState.Push(result);
         }
-        public bool Compare(LuaState luaState,int index1, int index2, TokenType opType)
+        public LuaValue Compare(LuaState luaState,int index1, int index2, TokenType opType)
         {
             LuaValue luaValue1 = luaState.Get(index1);
             LuaValue luaValue2 = luaState.Get(index2);
-            return (bool)operatorDic[opType](luaValue1, luaValue2).OValue;
+            return operatorDic[opType](luaValue1, luaValue2);
         }
 
         public void Len(LuaState luaState,int index)
@@ -44,6 +44,10 @@ namespace LuaVM.VM.LuaAPI
             if(value.Type == LuaValueType.String)
             {
                 luaState.Push(new LuaValue((double)((value.OValue as string).Length)));
+            }
+            else if(value.Type == LuaValueType.Table)
+            {
+                luaState.Push(new LuaValue((double)((value.OValue as Table.LuaTable).Len())));
             }
             else
             {

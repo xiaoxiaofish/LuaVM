@@ -30,10 +30,10 @@ namespace LuaVM.Codegen
         int paramsNum;
         bool isVararg;
         int maxStackSize;
-        int[] code;
+        uint[] code;
         UpValue[] upValues;
-
-        public Prototype(string source, int lineDefine, int lastLineDefine, int paramsNum, bool isVararg, int maxStackSize, int[] code, UpValue[] upValues)
+        LuaValue[] constVars;
+        public Prototype(string source, int lineDefine, int lastLineDefine, int paramsNum, bool isVararg, int maxStackSize, uint[] code, UpValue[] upValues)
         {
             this.source = source;
             this.lineDefine = lineDefine;
@@ -50,8 +50,9 @@ namespace LuaVM.Codegen
         public int ParamsNum { get => paramsNum; }
         public bool IsVararg { get => isVararg; }
         public int MaxStackSize { get => maxStackSize; }
-        public int[] Code { get => code; }
+        public uint[] Code { get => code; }
         public UpValue[] UpValues { get => upValues; }
+        public LuaValue[] ConstVars { get => constVars; }
     }
     public class BinaryChunk
     {
@@ -83,6 +84,13 @@ namespace LuaVM.Codegen
                 return i;
             }
 
+            public uint ReadUint()
+            {
+                uint i = BitConverter.ToUInt32(datas, index);
+                index += 4;
+                return i;
+            }
+
             public double ReadDouble()
             {
                 double d = BitConverter.ToDouble(datas, index);
@@ -105,13 +113,13 @@ namespace LuaVM.Codegen
                 throw new Exception("错误的代码指令！无法执行！");
             }
 
-            public int[] ReadCode()
+            public uint[] ReadCode()
             {
                 int size = ReadInt();
-                int[] codes = new int[size];
+                uint[] codes = new uint[size];
                 for (int i = 0; i < size; i++)
                 {
-                    codes[i] = ReadInt();
+                    codes[i] = ReadUint();
                 }
                 return codes;
             }
@@ -163,6 +171,18 @@ namespace LuaVM.Codegen
                 }
             }
 
+            public LuaValue[] ReadConstLuaVars()
+            {
+                int size = ReadInt();
+                LuaValue[] vars = new LuaValue[size];
+                for (int i = 0; i < size; i ++)
+                {
+                    vars[i] = ReadConstLuaValue();
+                }
+                return vars;
+            }
+
+
             /// <summary>
             /// 读取所有子函数原型
             /// </summary>
@@ -176,6 +196,7 @@ namespace LuaVM.Codegen
                 }
                 return prototypes;
             }
+
         }
 
         BinaryReader reader;
