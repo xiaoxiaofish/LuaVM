@@ -18,6 +18,7 @@ namespace LuaVM.VM
         Table,
         Function,
         Userdata,
+        CSharpFunc,
         None,
     }
 

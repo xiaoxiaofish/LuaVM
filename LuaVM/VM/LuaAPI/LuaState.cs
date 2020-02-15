@@ -10,28 +10,39 @@ namespace LuaVM.VM.LuaAPI
 {
     public class LuaState
     {
+        const int minStackSize = 20;
+        const int maxStackSize = 10000000;
+        const int registtyIndex = -maxStackSize - 1000;
+        const int GRegistryIndex = 2;
+        LuaValue GRegistryKey = new LuaValue(GRegistryIndex);
+        LuaTable registerTable;
         LuaStack stack;
-        int pc;
-        Prototype prototype;
         LuaOperator LuaOperator;
-        public int Pc { get => pc; set => pc = value; }
+        public int Pc { get => stack.Pc; set => stack.Pc = value; }
         public LuaState(Prototype prototype)
         {
-            stack = new LuaStack();
-            stack.CreatStack(0);
+            stack = new LuaStack(minStackSize);
+            //stack.CreatStack(minStackSize);
+            stack.Closure = new Closure(prototype);
             Pc = 0;
-            this.prototype = prototype;
+            //this.prototype = prototype;
             LuaOperator = new LuaOperator();
+            registerTable = new LuaTable(0,0);
+        }
+
+        private void InitState()
+        {
+            registerTable[GRegistryKey] = new LuaValue(new LuaTable(0, 0), LuaValueType.Table);
         }
 
         public void AddPC()
         {
-            pc++;
+            stack.Pc++;
         }
 
         public void AddPC(int step)
         {
-            pc += step;
+            stack.Pc += step;
         }
 
         /// <summary>
@@ -40,7 +51,7 @@ namespace LuaVM.VM.LuaAPI
         /// <returns></returns>
         public uint Fetch()
         {
-            return prototype.Code[pc++];
+            return stack.Closure.Prototype.Code[stack.Pc++];
         }
 
         /// <summary>
@@ -49,7 +60,7 @@ namespace LuaVM.VM.LuaAPI
         /// <param name="index"></param>
         public void GetConstVar(int index)
         {
-            stack.Push(prototype.ConstVars[index]);
+            stack.Push(stack.Closure.Prototype.ConstVars[index]);
         }
 
         /// <summary>
@@ -58,7 +69,7 @@ namespace LuaVM.VM.LuaAPI
         /// <returns></returns>
         public void GetRK(int rk)
         {
-            if(rk > 0xff)
+            if (rk > 0xff)
             {
                 GetConstVar(rk & 0xff);
             }
@@ -98,7 +109,7 @@ namespace LuaVM.VM.LuaAPI
 
         public void Pop(int num)
         {
-            while(num > 0)
+            while (num > 0)
             {
                 stack.Pop();
                 num--;
@@ -108,13 +119,43 @@ namespace LuaVM.VM.LuaAPI
         public LuaValue Pop()
         {
             return stack.Pop();
+        }
 
+        public LuaValue[] PopN(int num)
+        {
+            LuaValue[] values = new LuaValue[num];
+            int index = num - 1;
+            for(int i = index; i > 0; i++)
+            {
+                values[index] = Pop();
+            }
+            return values;
+        }
+
+        public void PushN(LuaValue[] values, int n)
+        {
+            if(n < 0)
+            {
+                n = values.Length;
+            }
+            int len = values.Length;
+            for (int i = 0; i < n; i++)
+            {
+                if(i < len)
+                {
+                    Push(values[i]);
+                }
+                else
+                {
+                    Push(new LuaValue());
+                }
+            }
         }
 
         public void CopyTo(int sourceIndex, int targetIndex)
         {
             LuaValue luaValue = stack.Get(sourceIndex);
-            stack.Set(targetIndex,luaValue);
+            stack.Set(targetIndex, luaValue);
         }
 
         public void Push(LuaValue luaValue)
@@ -145,7 +186,7 @@ namespace LuaVM.VM.LuaAPI
         /// </summary>
         public void Replace(int index)
         {
-            LuaValue luaValue =  stack.Pop();
+            LuaValue luaValue = stack.Pop();
             stack.Set(index, luaValue);
         }
 
@@ -169,7 +210,7 @@ namespace LuaVM.VM.LuaAPI
             int t = stack.Top;
             int p = stack.AbsIndex(sourceIndex) - 1;
             int m = 0;
-            if(step > 0)
+            if (step > 0)
             {
                 m = t - step;
             }
@@ -188,14 +229,14 @@ namespace LuaVM.VM.LuaAPI
         /// <param name="index"></param>
         public void SetTop(int index)
         {
-            if(index < 0)
+            if (index < 0)
             {
                 throw new Exception("栈索引错误！");
             }
             int num = stack.Top - index;
-            if(num > 0)
+            if (num > 0)
             {
-                while(num > 0)
+                while (num > 0)
                 {
                     stack.Pop();
                     num--;
@@ -203,7 +244,7 @@ namespace LuaVM.VM.LuaAPI
             }
             else
             {
-                while(num > 0)
+                while (num > 0)
                 {
                     stack.Push(new LuaValue());
                     num--;
@@ -248,7 +289,7 @@ namespace LuaVM.VM.LuaAPI
 
         public bool ToBool(int index)
         {
-            switch(TypeOfIndex(index))
+            switch (TypeOfIndex(index))
             {
                 case LuaValueType.Nil:
                     return false;
@@ -273,7 +314,7 @@ namespace LuaVM.VM.LuaAPI
 
         public double ToNumberX(int index)
         {
-            if(Get(index).OValue == null)
+            if (Get(index).OValue == null)
             {
                 return Get(index).NValue;
             }
@@ -282,7 +323,7 @@ namespace LuaVM.VM.LuaAPI
 
         public string ToString(int index)
         {
-            switch(TypeOfIndex(index))
+            switch (TypeOfIndex(index))
             {
                 case LuaValueType.String:
                     return (string)Get(index).OValue;
@@ -329,6 +370,237 @@ namespace LuaVM.VM.LuaAPI
             CreatLuaTable(0, 0);
         }
 
+        /// <summary>
+        /// 从指定寄存器器里取出表，将表中key对应值推到栈顶，并返回值的类型
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        public LuaValueType GetTable(LuaValue key, int index)
+        {
+            var table = Get(index);
+            if (table.Type == LuaValueType.Table)
+            {
+                stack.Push((table.OValue as LuaTable)[key]);
+                return (table.OValue as LuaTable)[key].Type;
+            }
+            else
+            {
+                throw new Exception("this is not table");
+            }
+        }
+
+        /// <summary>
+        /// 将键值对写入指定寄存器的表内
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        public void SetTable(int index, LuaValue key, LuaValue value)
+        {
+            var table = Get(index);
+            if (table.Type == LuaValueType.Table)
+            {
+                (table.OValue as LuaTable)[key] = value;
+            }
+            else
+            {
+                throw new Exception("this is not table");
+            }
+        }
+
+        public void PushGTable()
+        {
+            Push(registerTable[GRegistryKey]);
+        }
+
+        public LuaValueType GetGTable(string key)
+        {
+            var val = (registerTable[GRegistryKey].OValue as LuaTable)[new LuaValue(key,LuaValueType.String)];
+            Push(val);
+            return val.Type;
+        }
+
+        public void SetGTable(LuaValue value, string key)
+        {
+            var t = (registerTable[GRegistryKey].OValue as LuaTable);
+            t[new LuaValue(key, LuaValueType.String)] = value;
+        }
+
+        public void RegiterCSharpFunc(Closure CSharpFunc,string key)
+        {
+            SetGTable(new LuaValue(CSharpFunc, LuaValueType.CSharpFunc), key);
+        }
+
+
+        /// <summary>
+        /// 用单向链表做函数调用栈。添加一个新的函数调用栈。
+        /// </summary>
+        /// <param name="stack"></param>
+        public void PushLuaStack(LuaStack stack)
+        {
+            stack.Prep = this.stack;
+            this.stack = stack;
+        }
+
+        /// <summary>
+        /// 弹出最底层的调用栈
+        /// </summary>
+        public void PopLuaStack()
+        {
+            this.stack = this.stack.Prep;
+        }
+
+        /// <summary>
+        /// 加载二进制代码文件，并初始化main函数，构造为函数对象压入栈顶。
+        /// </summary>
+        /// <param name="chunck"></param>
+        /// <returns></returns>
+        public int Load(byte[] chunck)
+        {
+            BinaryChunk binaryChunk = new BinaryChunk(chunck);
+            Prototype prototype = binaryChunk.Undump();
+            Closure c = new Closure(prototype);
+
+            Push(new LuaValue(c,LuaValueType.Function));
+            return 0;
+
+        }
+
+        /// <summary>
+        /// 调用函数。nArg为参数个数，nResult为返回值个数
+        /// </summary>
+        /// <param name="nArg">参数个数</param>
+        /// <param name="nResult">返回值个数</param>
+        public void Call(int nArg, int nResult)
+        {
+            var c = Get(-(nArg + 1));
+            if(c.Type == LuaValueType.Function)
+            {
+                CallLuaClosure(nArg, nResult, c.OValue as Closure);
+            }
+            else if(c.Type == LuaValueType.CSharpFunc)
+            {
+                CallCSharpClosure(nArg, nResult, c.OValue as Closure);
+            }
+            else
+            {
+                throw new Exception("this is not a function");
+            }
+        }
+
+        /// <summary>
+        /// 调用Lua函数
+        /// </summary>
+        /// <param name="nArg">参数数量</param>
+        /// <param name="nResult">返回值数量</param>
+        /// <param name="c"></param>
+        private void CallLuaClosure(int nArg, int nResult, Closure c)
+        {
+            int nReg = c.Prototype.MaxStackSize;
+            int nParams = c.Prototype.ParamsNum;
+            bool isVararg = c.Prototype.IsVararg;
+            LuaStack newStack = new LuaStack(nReg + 20);
+            newStack.Closure = c;
+            var args = PopN(nArg);
+            //把函数对象POP掉
+            Pop();
+            newStack.PushN(args, nParams);
+            //让指针指向预分配的栈顶
+            if(newStack.Top < nReg)
+            {
+                int i = nReg - newStack.Top;
+                while(i > 0)
+                {
+                    newStack.Push(new LuaValue());
+                }
+            }
+            //如果函数时可变参数函数且参数个数比固定参数多，则把参数保存在栈的varlist里
+            if(nArg > nParams && isVararg)
+            {
+                newStack.VarList = args;
+            }
+            PushLuaStack(newStack);           
+        }
+
+        private void CallCSharpClosure(int nArg, int nResult, Closure c)
+        {
+            LuaStack newStack = new LuaStack(nArg + 20);
+            newStack.Closure = c;
+            var args = PopN(nArg);
+            newStack.PushN(args,nArg);
+            int nInfactResult = c.CSharpFunc(this);
+            PopLuaStack();
+            if(nInfactResult != 0)
+            {
+                var results = newStack.PopN(nInfactResult);
+                stack.PushN(results, nResult);
+            }
+        }
+
+        public LuaValue[] GetReturnValue(int nResult)
+        {
+            if (nResult != 0)
+            {
+                return stack.PopN(nResult);
+            }
+            else
+                return null;
+        }
+
+        /// <summary>
+        /// 当前函数已经使用了的寄存器数量
+        /// </summary>
+        /// <returns></returns>
+        public int RegsiterCount()
+        {
+            return stack.Closure.Prototype.MaxStackSize;
+        }
+
+        /// <summary>
+        /// 将变长参数推入栈顶
+        /// </summary>
+        /// <param name="num"></param>
+        public void LoadVararg(int num)
+        {
+            if(num < 0)
+            {
+                num = stack.VarList.Length;
+            }
+            PushN(stack.VarList, num);
+        }
+
+        /// <summary>
+        /// 把当前lua函数的指定子函数实例化为closure类型推入栈顶
+        /// </summary>
+        /// <param name="index"></param>
+        public void LoadPrototype(int index)
+        {
+            var proto = stack.Closure.Prototype.ChildProtos[index];
+            Closure c = new Closure(proto);
+            Push(new LuaValue(c, LuaValueType.Function));
+        }
+
+        public void PushCSharpFunc(Func<LuaState,int> func)
+        {
+            Closure c = new Closure(func);
+            Push(new LuaValue(c, LuaValueType.CSharpFunc));
+        }
+
+        public bool IsCSharpFunc(int index)
+        {
+            return Get(index).Type == LuaValueType.Function;
+        }
+
+        public Func<LuaState, int> ToCSharpFunc(int index)
+        {
+            var func = Get(index);
+            if(func.Type == LuaValueType.CSharpFunc)
+            {
+                return func.OValue as Func<LuaState, int>;
+            }
+            return null;
+        }
 
     }
 }

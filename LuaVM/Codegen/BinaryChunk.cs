@@ -33,7 +33,8 @@ namespace LuaVM.Codegen
         uint[] code;
         UpValue[] upValues;
         LuaValue[] constVars;
-        public Prototype(string source, int lineDefine, int lastLineDefine, int paramsNum, bool isVararg, int maxStackSize, uint[] code, UpValue[] upValues)
+        Prototype[] childProtos;
+        public Prototype(string source, int lineDefine, int lastLineDefine, int paramsNum, bool isVararg, int maxStackSize, uint[] code, UpValue[] upValues, Prototype[] childProtos)
         {
             this.source = source;
             this.lineDefine = lineDefine;
@@ -43,16 +44,21 @@ namespace LuaVM.Codegen
             this.maxStackSize = maxStackSize;
             this.code = code;
             this.upValues = upValues;
+            this.childProtos = childProtos;
         }
         public string Source { get => source; }
         public int LineDefine { get => lineDefine; }
         public int LastLineDefine { get => lastLineDefine; }
         public int ParamsNum { get => paramsNum; }
         public bool IsVararg { get => isVararg; }
+        /// <summary>
+        /// 最少需要的寄存器数量
+        /// </summary>
         public int MaxStackSize { get => maxStackSize; }
         public uint[] Code { get => code; }
         public UpValue[] UpValues { get => upValues; }
         public LuaValue[] ConstVars { get => constVars; }
+        public Prototype[] ChildProtos { get => childProtos;}
     }
     public class BinaryChunk
     {
@@ -60,6 +66,12 @@ namespace LuaVM.Codegen
         {
             byte[] datas;
             int index;
+
+            public BinaryReader(byte[] datas)
+            {
+                this.datas = datas;
+                index = 0;
+            }
 
             public byte ReadByte()
             {
@@ -147,7 +159,7 @@ namespace LuaVM.Codegen
                 {
                     source = parentSource;
                 }
-                return new Prototype(source, ReadInt(), ReadInt(), ReadInt(), BitConverter.ToBoolean(datas, index++), ReadInt(), ReadCode(), ReadUpValues());
+                return new Prototype(source, ReadInt(), ReadInt(), ReadInt(), BitConverter.ToBoolean(datas, index++), ReadInt(), ReadCode(), ReadUpValues(),ReadPrototypes(parentSource));
             }
 
             public LuaValue ReadConstLuaValue()
@@ -200,9 +212,9 @@ namespace LuaVM.Codegen
         }
 
         BinaryReader reader;
-        public BinaryChunk()
+        public BinaryChunk(byte[] chunck)
         {
-            reader = new BinaryReader();
+            reader = new BinaryReader(chunck);
         }
 
         public Prototype Undump()

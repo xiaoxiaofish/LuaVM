@@ -32,7 +32,7 @@ namespace LuaVM.VM
             int a = 0, bx = 0;
             i.ASBX(ref a, ref bx);
             luaState.AddPC(bx);
-            if(a != 0)
+            if (a != 0)
             {
                 throw new Exception("指令错误！");
             }
@@ -47,7 +47,7 @@ namespace LuaVM.VM
             int a = 0, b = 0, c = 0;
             i.ABC(ref a, ref b, ref c);
             luaState.Push(new LuaValue());
-            for(int j = a + 1; j <= a + b; j++)
+            for (int j = a + 1; j <= a + b; j++)
             {
                 luaState.CopyTo(-1, j);
             }
@@ -63,9 +63,9 @@ namespace LuaVM.VM
             int a = 0, b = 0, c = 0;
             i.ABC(ref a, ref b, ref c);
             a += 1;
-            luaState.Push(new LuaValue(b != 0,LuaValueType.Bool));
+            luaState.Push(new LuaValue(b != 0, LuaValueType.Bool));
             luaState.Replace(a, luaState.GetTopValue());
-            if(c != 0)
+            if (c != 0)
             {
                 luaState.AddPC();
             }
@@ -137,7 +137,7 @@ namespace LuaVM.VM
             int a = 0, b = 0, c = 0;
             i.ABC(ref a, ref b, ref c);
             int n = c - b + 1;
-            for(int j = b + 1; j <= c + 1; j++)
+            for (int j = b + 1; j <= c + 1; j++)
             {
                 luaState.PushValueFromIndex(j);
             }
@@ -149,7 +149,7 @@ namespace LuaVM.VM
         /// 比较指令，比较两个寄存器或常量表里的值，分别由b和c指定，如果比较结果和a操作数相同，则跳过下一条指令。比较指令不更改寄存器状态
         /// </summary>
         /// <param name="i"></param>
-        public void Compare(Instruction i,TokenType opType)
+        public void Compare(Instruction i, TokenType opType)
         {
             int a = 0, b = 0, c = 0;
             i.ABC(ref a, ref b, ref c);
@@ -157,11 +157,11 @@ namespace LuaVM.VM
             luaState.GetRK(c + c);
             var result = luaState.Compare(-2, -1, opType);
             bool aBool = false;
-            if(a == 1)
+            if (a == 1)
             {
                 aBool = true;
             }
-            if((bool)result.OValue == aBool)
+            if ((bool)result.OValue == aBool)
             {
                 luaState.AddPC();
             }
@@ -213,7 +213,7 @@ namespace LuaVM.VM
             {
                 cBool = true;
             }
-            if(result == cBool)
+            if (result == cBool)
             {
                 luaState.CopyTo(b + 1, a + 1);
             }
@@ -250,11 +250,246 @@ namespace LuaVM.VM
             luaState.MathOperation(TokenType.Plus);
             luaState.Replace(a + 1);
             bool isPositionStep = luaState.ToNumber(a + 2) >= 0;
-            if(isPositionStep && (bool)luaState.Compare(a,a+1,TokenType.SmallerEqual).OValue || !isPositionStep && (bool)luaState.Compare(a + 1, a, TokenType.SmallerEqual).OValue)
+            if (isPositionStep && (bool)luaState.Compare(a, a + 1, TokenType.SmallerEqual).OValue || !isPositionStep && (bool)luaState.Compare(a + 1, a, TokenType.SmallerEqual).OValue)
             {
                 luaState.AddPC(sbx);
                 luaState.CopyTo(a + 1, a + 4);
             }
+        }
+
+        /// <summary>
+        /// NEWTABLE指令（iABC模式）创建空表，并将其放入指定寄存器。寄存器索引由操作数A指定，表的初始数组容量和哈希表容量分别由操作数B和C指定。
+        /// </summary>
+        /// <param name="i"></param>
+        public void NewTable(Instruction i)
+        {
+            int a = 0, b = 0, c = 0;
+            i.ABC(ref a, ref b, ref c);
+            a += 1;
+            luaState.CreatLuaTable(b, c);
+            luaState.Replace(a);
+        }
+
+        /// <summary>
+        /// GETTABLE指令（iABC模式）根据键从表里取值，并放入目标寄存器中。
+        /// 其中表位于寄存器中，索引由操作数B指定；键可能位于寄存器中，也可能在常量表里，索引由操作数C指定；目标寄存器索引则由操作数A指定。
+        /// </summary>
+        /// <param name="i"></param>
+        public void GetTable(Instruction i)
+        {
+            int a = 0, b = 0, c = 0;
+            i.ABC(ref a, ref b, ref c);
+            a += 1;
+            b += 1;
+            luaState.GetRK(c);
+            var key = luaState.Pop();
+            luaState.GetTable(key, b);
+            luaState.Replace(a);
+        }
+
+        /// <summary>
+        /// SETTABLE指令（iABC模式）根据键往表里赋值。其中表位于寄存器中，索引由操作数A指定；键和值可能位于寄存器中，也可能在常量表里，索引分别由操作数B和C指定。
+        /// </summary>
+        /// <param name="i"></param>
+        public void SetTable(Instruction i)
+        {
+            int a = 0, b = 0, c = 0;
+            i.ABC(ref a, ref b, ref c);
+            luaState.GetRK(b);
+            luaState.GetRK(c);
+            var key = luaState.Pop();
+            var value = luaState.Pop();
+            luaState.SetTable(a, key, value);
+        }
+
+        /// <summary>
+        /// SetList指令。
+        /// </summary>
+        /// <param name="i"></param>
+        public void SetList(Instruction i)
+        {
+
+        }
+
+        /// <summary>
+        /// 将一个函数原型实例化为一个closure对象，然后放入指定寄存器内。由操作数A指定,函数原型由bx操作数指定
+        /// </summary>
+        /// <param name="i"></param>
+        public void Closure(Instruction i)
+        {
+            int a = 0, bx = 0;
+            i.ABX(ref a, ref bx);
+            a += 1;
+            luaState.LoadPrototype(bx);
+            luaState.Remove(a);
+        }
+
+        /// <summary>
+        /// Call指令，操作数A指定被调用函数对象，如果B=1，表示没有参数，如果B>1，表示有B-1个参数，这些参数从寄存器R(A+1)开始。
+        /// 函数调用完之后，如果C=1，表示没有返回值，如果C>1，表示需要C-1个返回值，这些返回值会存到寄存器R(A)和它后面。
+        /// B=0时，参数从R(A+1)一直到栈顶；C=0时，返回值从R(A)一直到栈顶。
+        /// </summary>
+        /// <param name="i"></param>
+        public void Call(Instruction i)
+        {
+            int a = 0, b = 0, c = 0;
+            i.ABC(ref a, ref b, ref c);
+            a += 1;
+            int nArg = PushArgAndFunc(a, b);
+            luaState.Call(nArg, c - 1);
+            RunLuaClosure();
+            var results = luaState.GetReturnValue(c - 1);
+            luaState.PopLuaStack();
+            luaState.PushN(results, results.Length);
+        }
+
+        private void RunLuaClosure()
+        {
+            while(true)
+            {
+                Instruction pc = new Instruction(luaState.Fetch());
+                if (pc.OpCode != 38)
+                {
+                    pc.Execute(this);
+                }
+                else
+                {
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 将函数对象和参数压入栈顶,返回函数参数个数
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
+        private int PushArgAndFunc(int a, int b)
+        {
+            if (b >= 1)
+            {
+                for (int i = a; i < a + b; i++)
+                {
+                    luaState.PushValueFromIndex(i);
+                }
+                return b - 1;
+            }
+            // b = 0，代表参数从R(A+1)一直到栈顶
+            else
+            {
+                int stackTop = luaState.GetStackTop();
+                for (int i = a; i < a + stackTop; i++)
+                {
+                    luaState.PushValueFromIndex(i);
+                }
+                //参数就是从栈顶一直到R（A + 1）
+                return luaState.GetStackTop() - luaState.RegsiterCount() - 1;
+            }
+        }
+
+        private void PopResults(int a, int c)
+        {
+            //不需要返回值
+            if (c == 1)
+            {
+                return;
+            }
+            //c > 1，表示需要 c - 1个返回值
+            if (c > 1)
+            {
+                //返回值的寄存器从a开始。
+                for (int i = a + c - 2; i >= a; i--)
+                {
+                    luaState.Replace(i);
+                }
+            }
+            //c = 0,返回所有返回值,从栈顶一直到R（A）
+            else
+            {
+                int stackTop = luaState.GetStackTop();
+                for (int i = a + stackTop; i >= a; i--)
+                {
+                    luaState.Replace(i);
+                }
+            }
+        }
+
+        /// <summary>
+        /// return指令，将连续多个寄存器的返回值返回给调用函数，第一个寄存器有操作数A指定，个数由操作数B指定，C操作数没用。
+        /// 如果B=1，表示没有返回值，如果B>1，表示有B-1个返因值，这些返回值就存在寄存器R(A)和它后面。
+        /// </summary>
+        /// <param name="i"></param>
+        public void Return(Instruction i)
+        {
+            int a = 0, b = 0, c = 0;
+            i.ABC(ref a, ref b, ref c);
+            a += 1;
+            if (b == 1)
+            {
+                return;
+            }
+            if (b > 1)
+            {
+                for (int j = 0; j < a + b - 2; j++)
+                {
+                    luaState.PushValueFromIndex(j);
+                }
+                return;
+            }
+            if (b == 0)
+            {
+
+            }
+        }
+
+        /// <summary>
+        /// 变长参数指令。把传递给当前函数的连续多个参数加载到连续的指定寄存器中。A操作数指定第一个寄存器。B操作数指定数量。C操作数没用
+        /// b == 1,表示没有，b > 1，表示 b-1个参数,b = 0表示把从栈顶到a的所有寄存器全部加载
+        /// </summary>
+        /// <param name="i"></param>
+        public void Vararg(Instruction i)
+        {
+            int a = 0, b = 0, c = 0;
+            i.ABC(ref a, ref b, ref c);
+            a += 1;
+            //b > 1和b>0统一处理
+            if (b != 1)
+            {
+                luaState.LoadVararg(b - 1);
+                PopResults(a, b);
+            }
+        }
+
+        /// <summary>
+        /// 尾调用指令，使用当前函数帧继续调用函数
+        /// </summary>
+        /// <param name="i"></param>
+        public void TailCall(Instruction i)
+        {
+            int a = 0, b = 0, c = 0;
+            i.ABC(ref a, ref b, ref c);
+            a += 1;
+            c = 0;
+            int nArg = PushArgAndFunc(a, b);
+            luaState.Call(nArg, c - 1);
+            PopResults(a, c);
+        }
+
+        /// <summary>
+        /// Self指令，把对象和函数对象拷贝到两个相邻的寄存器中。对象在寄存器中，由操作数B指定，方法名在常量表中，操作数C指定，目标寄存器由操作数A指定。这样比两次Move少一个指令
+        /// </summary>
+        /// <param name="i"></param>
+        public void Self(Instruction i)
+        {
+            int a = 0, b = 0, c = 0;
+            i.ABC(ref a, ref b, ref c);
+            a += 1;
+            b += 1;
+            luaState.CopyTo(b, a + 1);
+            luaState.GetRK(c);
+            luaState.GetTable(luaState.GetTopValue(), b);
+            luaState.Replace(a);
         }
 
         public void LuaMain(Prototype prototype)
@@ -265,7 +500,7 @@ namespace LuaVM.VM
             while (true)
             {
                 Instruction pc = new Instruction(luaState.Fetch());
-                if(pc.OpCode != 38)
+                if (pc.OpCode != 38)
                 {
                     pc.Execute(this);
                 }

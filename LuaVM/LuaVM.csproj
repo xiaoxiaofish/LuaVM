@@ -57,7 +57,10 @@
     <Compile Include="Paser\Lexer\TokenReader.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="VM\Closure.cs" />
     <Compile Include="VM\Instruction.cs" />
+    <Compile Include="VM\LuaAndCSharp\LuaAndCSharpClosure.cs" />
+    <Compile Include="VM\LuaAndCSharp\LuaToCSharpState.cs" />
     <Compile Include="VM\LuaAPI\LuaOperator.cs" />
     <Compile Include="VM\LuaAPI\LuaStack.cs" />
     <Compile Include="VM\LuaAPI\LuaState.cs" />

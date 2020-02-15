@@ -10,12 +10,23 @@ namespace LuaVM.VM.LuaAPI
     public class LuaStack
     {
         List<LuaValue> stack;
+        LuaState luaState;
+        LuaStack prep;
+        Closure closure;
+        LuaValue[] varList;
+        int pc;
         /// <summary>
         /// 初始化创建栈
         /// </summary>
-        public  void CreatStack(int size)
+        public void CreatStack(int size, LuaState luaState)
         {
-            stack = new List<LuaValue>();
+            stack = new List<LuaValue>(size);
+            this.luaState = luaState;
+        }
+
+        public LuaStack(int size)
+        {
+            stack = new List<LuaValue>(size);
         }
 
         public void Push(LuaValue luaValue)
@@ -25,7 +36,7 @@ namespace LuaVM.VM.LuaAPI
 
         public LuaValue Pop()
         {
-            if(stack.Count > 0)
+            if (stack.Count > 0)
             {
                 LuaValue luaValue = stack.Last();
                 stack.RemoveAt(stack.Count - 1);
@@ -33,6 +44,37 @@ namespace LuaVM.VM.LuaAPI
             }
             throw new Exception("栈为空!");
 
+        }
+
+        public LuaValue[] PopN(int num)
+        {
+            LuaValue[] values = new LuaValue[num];
+            int index = num - 1;
+            for (int i = index; i > 0; i++)
+            {
+                values[index] = Pop();
+            }
+            return values;
+        }
+
+        public void PushN(LuaValue[] values, int n)
+        {
+            if (n < 0)
+            {
+                n = values.Length;
+            }
+            int len = values.Length;
+            for (int i = 0; i < n; i++)
+            {
+                if (i < len)
+                {
+                    Push(values[i]);
+                }
+                else
+                {
+                    Push(new LuaValue());
+                }
+            }
         }
 
         public LuaValue Get(int index)
@@ -43,7 +85,7 @@ namespace LuaVM.VM.LuaAPI
                     index = AbsIndex(index);
                 return stack[index - 1];
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 throw new Exception("无效栈索引！");
             }
@@ -70,7 +112,7 @@ namespace LuaVM.VM.LuaAPI
 
         public int AbsIndex(int index)
         {
-            if(index > 0)
+            if (index > 0)
             {
                 return index;
             }
@@ -99,7 +141,12 @@ namespace LuaVM.VM.LuaAPI
             }
         }
 
-        public void Insert(int index,LuaValue luaValue)
+        public LuaStack Prep { get => prep; set => prep = value; }
+        public Closure Closure { get => closure; set => closure = value; }
+        public LuaValue[] VarList { get => varList; set => varList = value; }
+        public int Pc { get => pc; set => pc = value; }
+
+        public void Insert(int index, LuaValue luaValue)
         {
             if (index < 0)
                 index = AbsIndex(index);

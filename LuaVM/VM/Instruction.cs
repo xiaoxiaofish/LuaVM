@@ -20,7 +20,7 @@ namespace LuaVM.VM
         OP_SETUPVAL,
         OP_SETTABLE,
         OP_NEWTABLE,
-        OP_SELE,
+        OP_SELF,
         OP_ADD,
         OP_SUB,
         OP_MUL,
@@ -109,13 +109,13 @@ namespace LuaVM.VM
                                                 new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgN, OPMode.IABC, OP.OP_LOADNIL,(Instruction i, LuaVM vm) =>{ vm.LoadNil(i);}),
                                                 new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgN, OPMode.IABC, OP.OP_GETUPVAL,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
                                                 new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgK, OPMode.IABC, OP.OP_GETTABUP,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
-                                                new OpCode(0, 1, OPArgU.OPArgR, OPArgU.OPArgK, OPMode.IABC, OP.OP_GETTABLE,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
+                                                new OpCode(0, 1, OPArgU.OPArgR, OPArgU.OPArgK, OPMode.IABC, OP.OP_GETTABLE,(Instruction i, LuaVM vm) =>{ vm.GetTable(i);}),
                                                 new OpCode(0, 0, OPArgU.OPArgK, OPArgU.OPArgK, OPMode.IABC, OP.OP_SETTABUP,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
                                                 new OpCode(0, 0, OPArgU.OPArgU, OPArgU.OPArgN, OPMode.IABC, OP.OP_SETUPVAL,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
-                                                new OpCode(0, 0, OPArgU.OPArgK, OPArgU.OPArgK, OPMode.IABC, OP.OP_SETTABLE,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
-                                                new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgU, OPMode.IABC, OP.OP_NEWTABLE,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
+                                                new OpCode(0, 0, OPArgU.OPArgK, OPArgU.OPArgK, OPMode.IABC, OP.OP_SETTABLE,(Instruction i, LuaVM vm) =>{ vm.SetTable(i);}),
+                                                new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgU, OPMode.IABC, OP.OP_NEWTABLE,(Instruction i, LuaVM vm) =>{ vm.NewTable(i);}),
 
-                                                new OpCode(0, 1, OPArgU.OPArgR, OPArgU.OPArgK, OPMode.IABC, OP.OP_SELE,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
+                                                new OpCode(0, 1, OPArgU.OPArgR, OPArgU.OPArgK, OPMode.IABC, OP.OP_SELF,(Instruction i, LuaVM vm) =>{ vm.Self(i);}),
                                                 new OpCode(0, 1, OPArgU.OPArgK, OPArgU.OPArgK, OPMode.IABC, OP.OP_ADD,(Instruction i, LuaVM vm) =>{ vm.DoubleOperator(i,Paser.TokenType.Plus);}),
                                                 new OpCode(0, 1, OPArgU.OPArgK, OPArgU.OPArgK, OPMode.IABC, OP.OP_SUB,(Instruction i, LuaVM vm) =>{ vm.DoubleOperator(i,Paser.TokenType.Minus);}),
                                                 new OpCode(0, 1, OPArgU.OPArgK, OPArgU.OPArgK, OPMode.IABC, OP.OP_MUL,(Instruction i, LuaVM vm) =>{ vm.DoubleOperator(i,Paser.TokenType.Star);}),
@@ -139,9 +139,9 @@ namespace LuaVM.VM
                                                 new OpCode(0, 1, OPArgU.OPArgK, OPArgU.OPArgK, OPMode.IABC, OP.OP_LE,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
                                                 new OpCode(0, 1, OPArgU.OPArgN, OPArgU.OPArgU, OPMode.IABC, OP.OP_TEST,(Instruction i, LuaVM vm) =>{ vm.Test(i);}),
                                                 new OpCode(0, 1, OPArgU.OPArgR, OPArgU.OPArgU, OPMode.IABC, OP.OP_TESTSET,(Instruction i, LuaVM vm) =>{ vm.TestSet(i);}),
-                                                new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgU, OPMode.IABC, OP.OP_CALL,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
-                                                new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgU, OPMode.IABC, OP.OP_TAILCALL,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
-                                                new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgN, OPMode.IABC, OP.OP_RETURN,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
+                                                new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgU, OPMode.IABC, OP.OP_CALL,(Instruction i, LuaVM vm) =>{ vm.Call(i);}),
+                                                new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgU, OPMode.IABC, OP.OP_TAILCALL,(Instruction i, LuaVM vm) =>{ vm.TailCall(i);}),
+                                                new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgN, OPMode.IABC, OP.OP_RETURN,(Instruction i, LuaVM vm) =>{ vm.Return(i);}),
                                                 new OpCode(0, 1, OPArgU.OPArgR, OPArgU.OPArgN, OPMode.IASBX, OP.OP_FORLOOP,(Instruction i, LuaVM vm) =>{ vm.ForLoop(i);}),
 
                                                 new OpCode(0, 1, OPArgU.OPArgR, OPArgU.OPArgN, OPMode.IASBX, OP.OP_FORPREP,(Instruction i, LuaVM vm) =>{ vm.ForPrep(i);}),
@@ -149,7 +149,7 @@ namespace LuaVM.VM
                                                 new OpCode(0, 1, OPArgU.OPArgR, OPArgU.OPArgN, OPMode.IASBX, OP.OP_TFORLOOP,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
                                                 new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgU, OPMode.IABC, OP.OP_SETLIST,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
                                                 new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgN, OPMode.IABX, OP.OP_CLOSURE,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
-                                                new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgN, OPMode.IABC, OP.OP_VARARG,(Instruction i, LuaVM vm) =>{ vm.Move(i);}),
+                                                new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgN, OPMode.IABC, OP.OP_VARARG,(Instruction i, LuaVM vm) =>{ vm.Vararg(i);}),
                                                 new OpCode(0, 1, OPArgU.OPArgU, OPArgU.OPArgU, OPMode.IAX, OP.OP_EXTRAARG,(Instruction i, LuaVM vm) =>{ vm.Move(i);})};
 
         readonly static int MaxARGBX = 1 << 18 - 1;// 2^18 - 1 = 262143
