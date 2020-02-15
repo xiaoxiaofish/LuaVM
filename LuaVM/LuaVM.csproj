@@ -67,6 +67,7 @@
     <Compile Include="VM\Table\LuaTable.cs" />
     <Compile Include="VM\LuaValue.cs" />
     <Compile Include="VM\LuaVM.cs" />
+    <Compile Include="VM\UpValue.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
