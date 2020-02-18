@@ -15,11 +15,15 @@ namespace LuaVM.VM.LuaAPI
         const int registtyIndex = -maxStackSize - 1000;
         const int GRegistryIndex = 2;
         LuaValue GRegistryKey = new LuaValue(GRegistryIndex);
+        Dictionary<int,LuaValue> UpvalTable = new Dictionary<int, LuaValue>();
         LuaTable registerTable;
         LuaStack stack;
         LuaOperator LuaOperator;
         Dictionary<int, UpValue> openUpValDic;
-        public int Pc { get => stack.Pc; set => stack.Pc = value; }
+        private Action runLuaClosureAction;
+        public int Pc { get => stack.Pc; set => stack.Pc = value;}
+        public Action RunLuaClosureAction { get => runLuaClosureAction; set => runLuaClosureAction = value; }
+
         public LuaState(Prototype prototype)
         {
             stack = new LuaStack(minStackSize);
@@ -30,6 +34,7 @@ namespace LuaVM.VM.LuaAPI
             LuaOperator = new LuaOperator();
             registerTable = new LuaTable(0, 0);
             //openUpValDic = new Dictionary<int, UpValue>();
+            LuaTable.CallMetafunc = CallMetaFunc;
         }
 
         private void InitState()
@@ -381,14 +386,70 @@ namespace LuaVM.VM.LuaAPI
         public LuaValueType GetTable(LuaValue key, int index)
         {
             var table = Get(index);
+            //如果对应寄存器中是表，则从表里取值
             if (table.Type == LuaValueType.Table)
             {
-                stack.Push((table.OValue as LuaTable)[key]);
+                var result = (table.OValue as LuaTable)[key];
+                Push(result);
+                return result.Type;
+            }
+            //如果不是表，报错。
+            else
+            {/*
+                LuaValue result = null;
+                Call__IndexMetaFunc(table, key, out result);
+                Push(result);
+                return result.Type;
+                  //如果取值出来为空
+                if(result.Type == LuaValueType.Nil)
+                {
+                    result = null;
+                    Call__IndexMetaFunc(table, key, out result);
+                    Push(result);
+                    return result.Type;
+                }
                 return (table.OValue as LuaTable)[key].Type;
+                */
+                throw new Exception("该变量不是表！");
+            }
+        }
+
+        private LuaValue CallMetaFunc(LuaValue table, LuaValue key, LuaValue metaIndex)
+        {
+            //拿到元表
+            var mate = GetMetatable(table);
+            //元表不为空
+            if (mate != null)
+            {
+                //从元表里拿_元方法
+                var mateFunc = mate[metaIndex];
+                //如果元方法也为表，递归调用
+                if (mateFunc.Type == LuaValueType.Table)
+                {
+                    return (mateFunc.OValue as LuaTable)[key];
+                }
+                //元方法是一个函数，则以t和k为参数调用函数
+                else if (mateFunc.Type == LuaValueType.Function)
+                {
+                    Push(mateFunc);
+                    Push(table);
+                    Push(key);
+                    Call(2, 1);
+                    RunLuaClosure();
+                    var results = GetReturnValue(1);
+                    PopLuaStack();
+                    return results[0];
+                }
+                else
+                {
+                    //__index不是表也不是方法，返回nil
+                    return new LuaValue();
+                }
             }
             else
             {
-                throw new Exception("this is not table");
+                //没查到元表
+                return new LuaValue();
             }
         }
 
@@ -407,7 +468,7 @@ namespace LuaVM.VM.LuaAPI
             }
             else
             {
-                throw new Exception("this is not table");
+                throw new Exception("该变量不是表！");
             }
         }
 
@@ -489,9 +550,23 @@ namespace LuaVM.VM.LuaAPI
             {
                 CallCSharpClosure(nArg, nResult, c.OValue as Closure);
             }
+            else if(c.Type == LuaValueType.Table)
+            {
+                var meta = GetMetatable(c);
+                if(meta != null)
+                {
+                    var callMetafunc = meta[new LuaValue("__call", LuaValueType.String)];
+                    if(callMetafunc.Type == LuaValueType.Function)
+                    {
+                        //将表作为第一个参数压入栈。
+                        Push(c);
+                        CallLuaClosure(nArg + 1, nResult, callMetafunc.OValue as Closure);
+                    }
+                }
+            }
             else
             {
-                throw new Exception("this is not a function");
+                throw new Exception("该变量不能被当做函数调用！");
             }
         }
 
@@ -528,6 +603,13 @@ namespace LuaVM.VM.LuaAPI
             }
             PushLuaStack(newStack);
         }
+
+        private void RunLuaClosure()
+        {
+            runLuaClosureAction();
+        }
+
+
 
         private void CallCSharpClosure(int nArg, int nResult, Closure c)
         {
@@ -657,5 +739,81 @@ namespace LuaVM.VM.LuaAPI
             return null;
         }
 
+        public LuaValue GetUpval(int index)
+        {
+            return UpvalTable[index];
+        }
+
+        public void SetUpval(int index, LuaValue val)
+        {
+            UpvalTable[index] = val;
+        }
+
+        public void CloseUpvals(int a)
+        {
+            //for(int i = 0; i < )
+        }
+
+        public void SetMetatable(LuaValue val, LuaValue metatable)
+        {
+            if(val.Type == LuaValueType.Table && metatable.Type == LuaValueType.Table)
+            {
+                    (val.OValue as LuaTable).Metatable = metatable.OValue as LuaTable;
+            }
+            else
+            {
+                /*var key = new LuaValue("_M" + Enum.GetName(typeof(LuaValueType), val.Type), LuaValueType.String);
+                registerTable[key] = new LuaValue(metatable,LuaValueType.Table);*/
+                throw new Exception("只能给表类型变量设置表类型的元表！");
+            }
+        }
+
+        public LuaTable GetMetatable(LuaValue val)
+        {
+            if (val.Type == LuaValueType.Table)
+            {
+                return (val.OValue as LuaTable).Metatable;
+            }
+            else
+            {
+                var key = new LuaValue("_M" + Enum.GetName(typeof(LuaValueType), val.Type), LuaValueType.String);
+                if(registerTable[key].Type != LuaValueType.Nil)
+                {
+                    return registerTable[key].OValue as LuaTable;
+                }
+            }
+            return null;
+        }
+
+        public bool CallMetaFunc(LuaValue value1, LuaValue value2, string name, out LuaValue result)
+        {
+            var mate1 = GetMetatable(value1);
+            LuaValue func = null;
+            var key = new LuaValue(name, LuaValueType.String);
+            if (mate1 != null)
+            {
+                func = mate1[key];
+            }
+            else
+            {
+                var mate2 = GetMetatable(value2);
+                if (mate2 != null)
+                {
+                    func = mate2[key];
+                }
+                else
+                {
+                    result = null;
+                    return false;
+                }
+            }
+            Push(func);
+            Push(value1);
+            Push(value2);
+            Call(2, 1);
+            
+            result = Pop();
+            return true;
+        }
     }
 }

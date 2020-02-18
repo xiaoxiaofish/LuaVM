@@ -1,5 +1,6 @@
 ﻿using LuaVM.Codegen;
 using LuaVM.Paser;
+using LuaVM.VM.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,7 +35,7 @@ namespace LuaVM.VM
             luaState.AddPC(bx);
             if (a != 0)
             {
-                throw new Exception("指令错误！");
+
             }
         }
 
@@ -492,10 +493,65 @@ namespace LuaVM.VM
             luaState.Replace(a);
         }
 
+        /// <summary>
+        /// GetUpval指令。A操作数指定目标寄存器，B操作数指定Upval寄存器，C没用
+        /// </summary>
+        /// <param name="i"></param>
+        public void GetUpval(Instruction i)
+        {
+            int a = 0, b = 0, c = 0;
+            i.ABC(ref a, ref b, ref c);
+            luaState.Push(luaState.GetUpval(b));
+            luaState.CopyTo(luaState.GetStackTop(), a + 1);
+            luaState.Pop();
+        }
+
+        /// <summary>
+        /// setupval指令，将寄存器的值赋值给upval，a指定寄存器索引，b指定upval索引，c没用
+        /// </summary>
+        /// <param name="i"></param>
+        public void SetUpval(Instruction i)
+        {
+            int a = 0, b = 0, c = 0;
+            i.ABC(ref a, ref b, ref c);
+            luaState.SetUpval(b, luaState.Get(a + 1));
+        }
+
+        /// <summary>
+        /// gettableup指令，当某个upval是一个表，则通过该指令从该表中获取值，目标寄存器由a指定，upval索引由b指定，键由c指定，可能是常量也可能在寄存器中
+        /// </summary>
+        /// <param name="i"></param>
+        public void GetUpTable(Instruction i)
+        {
+            int a = 0, b = 0, c = 0;
+            i.ABC(ref a, ref b, ref c);
+            luaState.GetRK(c);
+            var table = luaState.GetUpval(b);
+            luaState.Push((table.OValue as LuaTable)[luaState.Pop()]);
+            luaState.Replace(a + 1);
+        }
+
+        /// <summary>
+        /// settableup指令，当某个upval是一个表，则通过该指令给该表赋值，upval索引由a指定，值由c指定，键由b指定，可能是常量也可能在寄存器中
+        /// </summary>
+        /// <param name="i"></param>
+        public void SetUpTable(Instruction i)
+        {
+            int a = 0, b = 0, c = 0;
+            i.ABC(ref a, ref b, ref c);
+            var table = luaState.GetUpval(a);
+            luaState.GetRK(b);
+            luaState.GetRK(c);
+            var key = luaState.Pop();
+            var value = luaState.Pop();
+            (table.OValue as LuaTable)[key] = value;
+        }
+
         public void LuaMain(Prototype prototype)
         {
             int regsQuantity = prototype.MaxStackSize;
             luaState = new LuaAPI.LuaState(prototype);
+            luaState.RunLuaClosureAction = RunLuaClosure;
             //OpCode returnOp = Instruction.OpCodeTable[38];
             while (true)
             {

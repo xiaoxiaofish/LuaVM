@@ -8,12 +8,14 @@ namespace LuaVM.VM.Table
 {
     public class LuaTable
     {
-        private Dictionary<LuaValue, LuaValue> luaTable;
+        private Dictionary<LuaValue, LuaValue> luaTable = null;
         /// <summary>
         /// 当表内数据为连续的正整数，不采用字典，直接使用数组
         /// </summary>
         private List<int> array;
 
+        private static Func<LuaValue, LuaValue, LuaValue, LuaValue> callMetafunc;
+        private LuaTable metatable;
         /// <summary>
         /// 构造函数，当nArr > 0时，表明该表可能当做数组来使用
         /// </summary>
@@ -48,7 +50,9 @@ namespace LuaVM.VM.Table
                     }
                     else
                     {
-                        return new LuaValue();
+                        //当表里没有对应的键值
+                        //尝试调__index元方法
+                        return callMetafunc(new LuaValue(this,LuaValueType.Table), key, new LuaValue("__index", LuaValueType.String));
                     }
                 }
                 else
@@ -73,7 +77,9 @@ namespace LuaVM.VM.Table
                     }
                     else
                     {
-                        luaTable.Add(key, value);
+                        //当表里没有对应的键值
+                        //尝试调__newindex元方法
+                        callMetafunc(new LuaValue(this, LuaValueType.Table), key, new LuaValue("__index", LuaValueType.String));
                     }
                 }
                 else
@@ -83,6 +89,9 @@ namespace LuaVM.VM.Table
                 }
             }
         }
+
+        public LuaTable Metatable { get => metatable; set => metatable = value; }
+        public static Func<LuaValue, LuaValue, LuaValue,LuaValue> CallMetafunc {set => callMetafunc = value; }
 
         public int Len()
         {
@@ -104,6 +113,5 @@ namespace LuaVM.VM.Table
             }
             return null;
         }
-
     }
 }

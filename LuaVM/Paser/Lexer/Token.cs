@@ -78,6 +78,22 @@ namespace LuaVM.Paser
         Then,
         Repeat,
         Eof,
+
+       //元方法
+        __add,
+        __sub,
+        __mul,
+        __mod,
+        __pow,
+        __div,
+        __idiv,
+        __band,
+        __bor,
+        __bxor,
+        __shl,
+        __shr,
+        __unm,
+        __bnot,
     }
     public class Token
     {

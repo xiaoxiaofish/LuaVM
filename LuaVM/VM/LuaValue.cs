@@ -98,6 +98,34 @@ namespace LuaVM.VM
             return false;
         }
 
+        public override bool Equals(object obj)
+        {
+            if(obj is LuaValue)
+            {
+                var val2 = obj as LuaValue;
+                if(val2.type == this.type)
+                {
+                    if(val2.type == LuaValueType.Number)
+                    {
+                        return val2.nValue == this.nValue;
+                    }
+                    else
+                    {
+                        return val2.oValue == this.oValue;
+                    }
+                }
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            if(type == LuaValueType.Number)
+            {
+                return nValue.GetHashCode();
+            }
+            return oValue.GetHashCode();
+        }
 
         public static LuaValue operator +(LuaValue value1, LuaValue value2)
         {
