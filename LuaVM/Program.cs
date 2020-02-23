@@ -1,11 +1,12 @@
-﻿using LuaVM.VM.LuaAPI;
+﻿using LuaVM.Codegen;
+using LuaVM.VM.LuaAPI;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using LuaVM.Paser;
 namespace LuaVM
 {
     class Program
@@ -15,8 +16,10 @@ namespace LuaVM
             //  Paser.Lexer.Lexer lexer = new Paser.Lexer.Lexer("Define/code.txt", "Define/keyWord.txt");
             //   lexer.StartLexer();
             //  lexer.PrintAllToken();
-            // Paser.Paser paser = new Paser.Paser("Define/code.txt", "Define/keyWord.txt");
-            // paser.StartPaser();
+            Paser.Paser paser = new Paser.Paser("Define/code.txt", "Define/keyWord.txt");
+            paser.StartPaser();
+            CodeGenerator codeGenerator = new CodeGenerator();
+            codeGenerator.GenPrototype(paser.ChunckNode.Block);
             /*System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
             watch.Start();  //开始监视代码运行时间
            
@@ -28,10 +31,10 @@ namespace LuaVM
 
             //   string s = ss.ReadToEnd();
             //   Console.WriteLine(s);
-           
+
             Console.Read();
         }
 
-      
+
     }
 }

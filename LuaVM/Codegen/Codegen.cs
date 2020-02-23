@@ -79,7 +79,9 @@ namespace LuaVM.Codegen
             int usedReg;
             int maxReg;
             int scopeLv;
-            List<uint> instructions;
+            int nParam;
+            bool isVararg;
+            List<FuncInfo> childFunc;
             /// <summary>
             /// 上层函数
             /// </summary>
@@ -89,25 +91,58 @@ namespace LuaVM.Codegen
             /// 局部变量字典
             /// </summary>
             Dictionary<string, LocalVarInfo> VarDic;
+            Dictionary<object, int> constDic;
             /// <summary>
             /// 捕获变量字典
             /// </summary>
-            Dictionary<string, UpValInfo> UpVarDic;
+            Dictionary<string, UpValInfo> upVarDic;
             /// <summary>
             /// 按变量顺序存储变量
             /// </summary>
             LinkedList<LocalVarInfo> localVars;
-            public int UsedReg { get => usedReg;}
-            public int MaxReg { get => maxReg;}
+            public int UsedReg { get => usedReg; set => usedReg = value; }
+            public int MaxReg { get => maxReg; }
+            public List<Instruction> InstructionList { get => instructionList; set => instructionList = value; }
+            public Dictionary<string, LocalVarInfo> VarDic1 { get => VarDic; }
+            public Dictionary<object, int> ConstDic { get => constDic; set => constDic = value; }
+            public bool IsVararg { get => isVararg; set => isVararg = value; }
+            public List<FuncInfo> ChildFunc { get => childFunc; set => childFunc = value; }
+            public Dictionary<string, UpValInfo> UpVarDic { get => upVarDic; set => upVarDic = value; }
+            public int NParam { get => nParam; set => nParam = value; }
 
-           /// <summary>
-           /// 分配一个寄存器，上限255.索引从0开始
-           /// </summary>
-           /// <returns></returns>
+            public FuncInfo()
+            {
+                childFunc = new List<FuncInfo>();
+                breakTable = new List<List<int>>();
+                UpVarDic = new Dictionary<string, UpValInfo>();
+                localVars = new LinkedList<LocalVarInfo>();
+                constDic = new Dictionary<object, int>();
+                instructionList = new List<Instruction>();
+                VarDic = new Dictionary<string, LocalVarInfo>();
+            }
+            public int IndexOfConstVar(object val)
+            {
+                if(constDic.ContainsKey(val))
+                {
+                    return constDic[val];
+                }
+                else
+                {
+                    int index = constDic.Count;
+                    constDic.Add(val, index);
+                    return index;
+                }
+            }
+            List<Instruction> instructionList;
+
+            /// <summary>
+            /// 分配一个寄存器，上限255.索引从0开始
+            /// </summary>
+            /// <returns></returns>
             public int AllocReg()
             {
                 usedReg++;
-                if(usedReg >= 255)
+                if (usedReg >= 255)
                 {
                     throw new Exception("寄存器数量达到上限！");
                 }
@@ -161,18 +196,18 @@ namespace LuaVM.Codegen
             public int AddLocalVar(string identifier)
             {
                 LocalVarInfo localVar = new LocalVarInfo(identifier, this.scopeLv, AllocReg(), false);
-                localVars.AddLast(localVar);
+                localVars.AddFirst(localVar);
                 //如果已经有同名变量，则在当前作用域覆盖掉同名变量。
-                if (VarDic.ContainsKey(identifier))
+                if (VarDic1.ContainsKey(identifier))
                 {
+                    localVar.Prev = VarDic1[identifier];
                     //先让该变量拿到之前声明变量的指针,然后覆盖之前变量
-                    localVar.Prev = VarDic[identifier].Prev;
-                    VarDic[identifier] = localVar;
+                    VarDic1[identifier] = localVar;
                     return localVar.RegIndex;
                 }
                 else
                 {
-                    VarDic.Add(identifier, localVar);
+                    VarDic1.Add(identifier, localVar);
                     return localVar.RegIndex;
                 }
             }
@@ -184,9 +219,9 @@ namespace LuaVM.Codegen
             /// <returns></returns>
             public int RegIndexOfVar(string identifier)
             {
-                if(VarDic.ContainsKey(identifier))
+                if (VarDic1.ContainsKey(identifier))
                 {
-                    return VarDic[identifier].RegIndex;
+                    return VarDic1[identifier].RegIndex;
                 }
                 return -1;
             }
@@ -198,9 +233,9 @@ namespace LuaVM.Codegen
             {
                 scopeLv--;
                 var last = localVars.Last;
-                while(last.Previous != null)
+                while (last.Previous != null)
                 {
-                    if(last.Value.ScopeLv > scopeLv)
+                    if (last.Value.ScopeLv > scopeLv)
                     {
                         RemoveLocalVar(last.Value);
                     }
@@ -219,20 +254,21 @@ namespace LuaVM.Codegen
             {
                 FreeReg();
                 //若没有同名变量，直接去除
-                if(localVar.Prev == null)
+                if (localVar.Prev == null)
                 {
-                    VarDic[localVar.Identifier] = null;
+                    VarDic1.Remove(localVar.Identifier);
+                    localVars.Remove(localVar);
                 }
                 //若果存在同名变量且作用域相同，则先删除该变量再递归删除同名变量。
-                else if(localVar.ScopeLv == localVar.Prev.ScopeLv)
+                else if (localVar.ScopeLv == localVar.Prev.ScopeLv)
                 {
-                    VarDic[localVar.Identifier] = localVar.Prev;
                     RemoveLocalVar(localVar.Prev);
                 }
                 else
                 {
                     //有同名变量且作用域在上层，则直接释放该变量，更新变量索引
-                    VarDic[localVar.Identifier] = localVar.Prev;
+                    VarDic1[localVar.Identifier] = localVar.Prev;
+                    localVars.Remove(localVar);
                 }
             }
 
@@ -243,7 +279,7 @@ namespace LuaVM.Codegen
             public void EnterScope(bool breakable)
             {
                 scopeLv++;
-                if(breakable)
+                if (breakable)
                 {
                     breakTable.Add(new List<int>());
                 }
@@ -255,9 +291,9 @@ namespace LuaVM.Codegen
 
             public void AddBreakJmp(int pc)
             {
-                for(int i = breakTable.Count - 1; i >= 0; i--)
+                for (int i = scopeLv; i >= 0; i--)
                 {
-                    if(breakTable[i] != null )
+                    if (breakTable[i] != null)
                     {
                         breakTable[i].Add(pc);
                         return;
@@ -273,16 +309,16 @@ namespace LuaVM.Codegen
             /// <returns></returns>
             public int UpValOfIndex(string identifier)
             {
-                if(UpVarDic.ContainsKey(identifier))
+                if (UpVarDic.ContainsKey(identifier))
                 {
                     return UpVarDic[identifier].Index;
                 }
-                else if(parent != null)
+                else if (parent != null)
                 {
                     //如果上层作用域有该变量，则直接捕获
-                    if(parent.VarDic.ContainsKey(identifier))
+                    if (parent.VarDic1.ContainsKey(identifier))
                     {
-                        var localVar = VarDic[identifier];
+                        var localVar = VarDic1[identifier];
                         int upValIndex = UpVarDic.Count;
                         UpValInfo upValInfo = new UpValInfo(localVar.RegIndex, -1, upValIndex);
                         localVar.Captured = true;
@@ -307,11 +343,250 @@ namespace LuaVM.Codegen
                 }
             }
 
-            public void EmitABC(int a , int b, int c ,int d)
+            public void EmitABC(int a, int b, int c, OP op)
             {
-                //instructions.Add(((int)opCode.ArgBMode << 23 | (int)opCode.ArgCMode << 14 | (int)opCode.))
+                Console.WriteLine(op + " a:" + a + " b:" + b + " c:" + c);
+                InstructionList.Add(new Instruction((uint)(b << 23 | c << 14 | a << 6 | (int)op)));
+            }
+
+            public void EmitABX(int a, int bx, OP op)
+            {
+                Console.WriteLine(op + " a:" + a + " bx:" + bx);
+                InstructionList.Add(new Instruction((uint)(bx << 14 | a << 6 | (int)op)));
+            }
+
+            public void EmitASBX(int a, int b, OP op)
+            {
+                Console.WriteLine(op + " a:" + a + " b:" + b);
+                InstructionList.Add(new Instruction((uint)((b + Instruction.MaxARGSBX) << 14 | a << 6 | (int)op)));
+            }
+
+            public void EmitAX(int ax, OP op)
+            {
+                Console.WriteLine(op);
+                InstructionList.Add(new Instruction((uint)(ax << 6 | (int)op)));
+            }
+
+            public int PC()
+            {
+                return InstructionList.Count - 1;
+            }
+
+            public void FixSBX(int pc, int sbx)
+            {
+                var inst = InstructionList[pc];
+                var i = inst.instruction;
+                i = i << 18 >> 18;
+                i = i | (uint)((Instruction.MaxARGSBX + sbx) << 14);
+                InstructionList[pc] = new Instruction(i);
+            }
+
+
+            public void EmitMove(int a, int b)
+            {
+                EmitABC(a, b, 0, OP.OP_MOVE);
+            }
+
+            public int EmitJMP(int a, int sbx)
+            {
+                EmitASBX(a, sbx, OP.OP_JMP);
+                return PC();
+            }
+
+            public void EmitTest(int a, int c)
+            {
+                EmitABC(a, 0, c, OP.OP_TEST);
+            }
+
+            public void EmitTestSet(int a, int b ,int c)
+            {
+                EmitABC(a, b, c, OP.OP_TESTSET);
+            }
+
+            public void EmitLoadK(int a, object val)
+            {
+                int index = IndexOfConstVar(val);
+                if(index < (1 << 18))
+                {
+                    EmitABX(a, index, OP.OP_LOADK);
+                }
+                else
+                {
+                    EmitABX(a, 0, OP.OP_LOADK);
+                    EmitAX(index, OP.OP_EXTRAARG);
+                }
+            }
+
+            public int EmitForPrep(int a, int sbx)
+            {
+                EmitASBX(a, sbx, OP.OP_FORPREP);
+                return PC();
+            }
+
+            public int EmitForLoop(int a, int sbx)
+            {
+                EmitASBX(a, sbx, OP.OP_FORLOOP);
+                return PC();
+            }
+
+            public void EmitTForCall(int a, int c)
+            {
+                EmitABC(a, 0, c, OP.OP_TFORCALL);
+            }
+
+            public void EmitTForLoop(int a, int sbx)
+            {
+                EmitASBX(a, sbx, OP.OP_TFORLOOP);
+            }
+
+            public void EmitLoadNil(int a, int n)
+            {
+                if (n == 0)
+                    return;
+                EmitABC(a, n - 1, 0, OP.OP_LOADNIL);
+            }
+
+            public void EmitSetUpval(int a, int b)
+            {
+                EmitABC(a, b, 0, OP.OP_SETUPVAL);
+            }
+
+            public void EmitGetUpval(int a, int b)
+            {
+                EmitABC(a, b, 0, OP.OP_GETUPVAL);
+            }
+
+            public void EmitSetTabUp(int a, int b, int c)
+            {
+                EmitABC(a, b, c, OP.OP_SETTABUP);
+            }
+
+            public void EmitGetTabUp(int a, int b, int c)
+            {
+                EmitABC(a, b, c, OP.OP_GETTABUP);
+            }
+
+            public void EmitTailCall(int a, int nArgs)
+            {
+                EmitABC(a, nArgs + 1, 0, OP.OP_TAILCALL);
+            }
+
+            public void EmitSelf(int a, int b, int c)
+            {
+                EmitABC(a, b, c, OP.OP_SELF);
+            }
+
+            public void EmitReturn(int a, int n)
+            {
+                EmitABC(a, n + 1, 0, OP.OP_RETURN);
+            }
+
+            public void EmitCall(int a, int nArgs, int nRet)
+            {
+                EmitABC(a, nArgs + 1, nRet + 1, OP.OP_CALL);
+            }
+
+            public void EmitGetTable(int a, int b, int c)
+            {
+                EmitABC(a, b, c, OP.OP_GETTABLE);
+            }
+
+            public void EmitSetList(int a, int b, int c)
+            {
+                EmitABC(a, b, c, OP.OP_SETLIST);
+            }
+
+            public void EmitNewTable(int a, int b, int c)
+            {
+                EmitABC(a, b, c, OP.OP_NEWTABLE);
+            }
+
+            public void EmitSetTable(int a, int b, int c)
+            {
+                EmitABC(a, b, c, OP.OP_SETTABLE);
+            }
+
+            public void EmitLoadBool(int a, int b, int c)
+            {
+                EmitABC(a, b, c, OP.OP_LOADBOOL);
+            }
+
+            public void EmitVararg(int a, int n)
+            {
+                EmitABC(a, n + 1, 0, OP.OP_VARARG);
+            }
+
+            public  void EmitClosure(int a, int bx)
+            {
+                EmitABX(a, bx, OP.OP_CLOSURE);
+            }
+
+            public void EmitUnaryOp(int a, int b, TokenType type)
+            {
+                switch(type)
+                {
+                    case TokenType.Not:
+                        EmitABC(a, b, 0, OP.OP_NOT);
+                        break;
+                    case TokenType.Minus:
+                        EmitABC(a, b, 0, OP.OP_UNM);
+                        break;
+                    case TokenType.Error:
+                        EmitABC(a, b, 0, OP.OP_BNOT);
+                        break;
+                    case TokenType.Len:
+                        EmitABC(a, b, 0, OP.OP_LEN);
+                        break;
+                }
+            }
+
+            public void EmitDoubleOperator(int a, int b, int c, TokenType type)
+            {
+                switch (type)
+                {
+                    case TokenType.Plus:
+                        EmitABC(a, b, c, OP.OP_ADD);
+                        break;
+                    case TokenType.Minus:
+                        EmitABC(a, b, c, OP.OP_SUB);
+                        break;
+                    case TokenType.Star:
+                        EmitABC(a, b, c, OP.OP_MUL);
+                        break;
+                    case TokenType.Slash:
+                        EmitABC(a, b, c, OP.OP_DIV);
+                        break;
+                    default:
+                        {
+                            switch(type)
+                            {
+                                case TokenType.Equal:
+                                    EmitABC(1, b, c, OP.OP_EQ);
+                                    break;
+                                case TokenType.SmallerEqual:
+                                    EmitABC(1, b, c, OP.OP_LE);
+                                    break;
+                                case TokenType.NotEqual:
+                                    EmitABC(0, b, c, OP.OP_EQ);
+                                    break;
+                                case TokenType.Smaller:
+                                    EmitABC(1, b, c, OP.OP_LT);
+                                    break;
+                                case TokenType.Bigger:
+                                    EmitABC(0, b, c, OP.OP_LT);
+                                    break;
+                                case TokenType.BiggerEqual:
+                                    EmitABC(0, b, c, OP.OP_LE);
+                                    break;
+                            }
+                            EmitJMP(0, 1);
+                            EmitLoadBool(a, 0, 1);
+                            EmitLoadBool(a, 1, 0);
+                            break;
+                        }
+                }
             }
         }
-       
+
     }
 }

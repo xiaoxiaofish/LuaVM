@@ -15,18 +15,30 @@ namespace LuaVM.VM.LuaAPI
         Closure closure;
         LuaValue[] varList;
         int pc;
+        int top;
         /// <summary>
         /// 初始化创建栈
         /// </summary>
         public void CreatStack(int size, LuaState luaState)
         {
             stack = new List<LuaValue>(size);
+            /*for(int i = 0; i < size; i++)
+            {
+                stack.Add(null);
+            }*/
             this.luaState = luaState;
         }
 
         public LuaStack(int size)
         {
             stack = new List<LuaValue>(size);
+            /* for (int i = 0; i < size; i++)
+             {
+                 stack.Add(null);
+             }
+             top = 1;*/
+            stack.Add(null);
+            VarList = new LuaValue[1];
         }
 
         public void Push(LuaValue luaValue)
@@ -83,7 +95,7 @@ namespace LuaVM.VM.LuaAPI
             {
                 if (index < 0)
                     index = AbsIndex(index);
-                return stack[index - 1];
+                return stack[index];
             }
             catch (Exception e)
             {
@@ -101,6 +113,15 @@ namespace LuaVM.VM.LuaAPI
             }
             catch (Exception e)
             {
+                if(index < stack.Capacity)
+                {
+                    for(int i = stack.Count; i <= index; i++)
+                    {
+                        stack.Add(null);
+                    }
+                    stack[index] = luaValue;
+                    return;
+                }
                 throw new Exception("无效栈索引！");
             }
         }
@@ -116,7 +137,7 @@ namespace LuaVM.VM.LuaAPI
             {
                 return index;
             }
-            return index + stack.Count + 1;
+            return index + stack.Count;
         }
 
         public void Reverse(int startIndex, int num)

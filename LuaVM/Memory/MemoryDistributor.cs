@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 namespace LuaVM.Memory
 {
     
-    unsafe public class MemoryDistributor
+    public class MemoryDistributor
     {
        
 

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 namespace LuaVM.Memory
 {
-    unsafe public class MemoryBlock
+    public class MemoryBlock
     {
 
     }

@@ -38,6 +38,7 @@ namespace LuaVM.Paser
         ElseStat,
         DoStat,
         RepeatStat,
+        BreakStat,
         LocalVarDecStat,
         AssignStat,
         LocalFuncDefStat,
@@ -51,6 +52,8 @@ namespace LuaVM.Paser
         ParenExp,
         TableAccessExp,
         FuncCallExp,
+        NilExp,
+        ConstExp,
         Terminator,
         Nil,
         Number,
@@ -138,6 +141,11 @@ namespace LuaVM.Paser
         public StatNode() : base()
         {
             type = GrammarNodeType.Stat;
+        }
+
+        public StatNode(GrammarNodeType type) : base()
+        {
+            this.type = type;
         }
     }
 
@@ -230,13 +238,13 @@ namespace LuaVM.Paser
             type = GrammarNodeType.ForNumStat;
         }
 
-        private ExpNode varName;
+        private ConstExpNode varName;
         private ExpNode initExp;
         private ExpNode limitExp;
         private ExpNode stepExp;
         private DoStatNode doBlock;
 
-        public ExpNode VarName { get => varName; set => varName = value; }
+        public ConstExpNode VarName { get => varName; set => varName = value; }
         public ExpNode InitExp { get => initExp; set => initExp = value; }
         public ExpNode LimitExp { get => limitExp; set => limitExp = value; }
         public ExpNode StepExp { get => stepExp; set => stepExp = value; }
@@ -333,7 +341,7 @@ namespace LuaVM.Paser
     {
         public LoacalFuncDefStatNode() : base()
         {
-            type = GrammarNodeType.AssignStat;
+            type = GrammarNodeType.LocalFuncDefStat;
         }
         private ConstExpNode funcName;
         private ExpNode funcExp;
@@ -382,15 +390,15 @@ namespace LuaVM.Paser
     {
         public ConstExpNode(Token token) : base()
         {
-            type = GrammarNodeType.Exp;
+            type = GrammarNodeType.ConstExp;
             switch (token.TokenType)
             {
                 case TokenType.String:
-                    tokenValue.str = token.TokenValue;
+                    tokenValue = token.TokenValue;
                     ExpType = ConstExpType.StringExp;
                     break;
                 case TokenType.Number:
-                    tokenValue.number = double.Parse(token.TokenValue);
+                    tokenValue = double.Parse(token.TokenValue);
                     ExpType = ConstExpType.NumberExp;
                     break;
                 case TokenType.True:
@@ -400,7 +408,7 @@ namespace LuaVM.Paser
                     ExpType = ConstExpType.FalseExp;
                     break;
                 case TokenType.Identifier:
-                    tokenValue.str = token.TokenValue;
+                    name = token.TokenValue;
                     ExpType = ConstExpType.IdentifierExp;
                     break;
                 case TokenType.Nil:
@@ -428,7 +436,8 @@ namespace LuaVM.Paser
             public string str;
         }
 
-        public Value tokenValue;
+        public object tokenValue;
+        public string name;
         public ConstExpType ExpType
         {
             get;
@@ -572,6 +581,10 @@ namespace LuaVM.Paser
         private TokenReader tokenReader;
         private Lexer.Lexer lexer;
         private Token token;
+        private ChunckNode chunckNode;
+
+        public ChunckNode ChunckNode { get => chunckNode;}
+
         public Paser(string codeFilePath, string keyWordFilePath)
         {
             lexer = new Lexer.Lexer(codeFilePath, keyWordFilePath);
@@ -586,15 +599,15 @@ namespace LuaVM.Paser
 
         public void StartPaser()
         {
-            try
-            {
-                ChunckNode chunckNode = ChunckPaser();
-            }
-            catch(Exception e)
-            {
-                Console.WriteLine(e.Message);
-            }
-            Console.WriteLine("语法分析完成!");
+            //try
+           // {
+                chunckNode = ChunckPaser();
+          //  }
+          //  catch(Exception e)
+          //  {
+           //     Console.WriteLine(e.Message);
+          //  }
+          //  Console.WriteLine("语法分析完成!");
         }
 
         private ChunckNode ChunckPaser()
@@ -652,7 +665,7 @@ namespace LuaVM.Paser
         private StatNode BreakStatPaser()
         {
             ReadToken();
-            return new StatNode();
+            return new StatNode(GrammarNodeType.BreakStat);
         }
 
         private DoStatNode DoStatPaser()
@@ -885,7 +898,7 @@ namespace LuaVM.Paser
         /// </summary>
         /// <param name="varName"></param>
         /// <returns></returns>
-        private ForNumStatNode ForNumStatPaser(ExpNode varName)
+        private ForNumStatNode ForNumStatPaser(ConstExpNode varName)
         {
             ForNumStatNode forNumStatNode = new ForNumStatNode();
             forNumStatNode.VarName = varName;
@@ -1313,7 +1326,7 @@ namespace LuaVM.Paser
                     DoubleOperationExpNode node = new DoubleOperationExpNode();
                     node.Exp1 = expNode;
                     node.OpType = token.TokenType;
-                    node.Exp2 = Exp3Paser();
+                    node.Exp2 = Exp4Paser();
                     return node;
                 default:
                     break;
@@ -1365,7 +1378,7 @@ namespace LuaVM.Paser
                 default:
                     break;
             }
-            return Exp1Paser();
+            return expNode;
         }
 
         private ExpNode Exp1Paser()
@@ -1389,7 +1402,7 @@ namespace LuaVM.Paser
                         return FuncdefExpPaser();
                     }
                 case TokenType.LeftBig:
-                    return FuncdefExpPaser();
+                    return TableConstructorPaser();
                 default:
                     return PerfixExpPaser();
             }
@@ -1477,6 +1490,14 @@ namespace LuaVM.Paser
             ReadToken();
             TableConstructorExpNode tableConstructorExpNode = new TableConstructorExpNode();
             FieldListPaser(tableConstructorExpNode.KeyExpList, tableConstructorExpNode.ValExpList);
+            if(tableConstructorExpNode.KeyExpList == null)
+            {
+                tableConstructorExpNode.KeyExpList = new List<ExpNode>();
+            }
+            if(tableConstructorExpNode.ValExpList == null)
+            {
+                tableConstructorExpNode.ValExpList = new List<ExpNode>();
+            }
             if (tokenReader.PeekOne().TokenType == TokenType.Comma || tokenReader.PeekOne().TokenType == TokenType.SemiColon)
             {
                 //读掉最后的,和;
@@ -1490,6 +1511,10 @@ namespace LuaVM.Paser
                 {
                     throw new Exception("非法字符" + token.TokenValue + "在第" + token.Line + "行");
                 }
+            }
+            if (tokenReader.PeekOne().TokenType == TokenType.RightBig)
+            {
+                ReadToken();
             }
             return tableConstructorExpNode;
         }
@@ -1599,6 +1624,7 @@ namespace LuaVM.Paser
                                 tableAccessExpNode.Exp = keyExp;
                                 tableAccessExpNode.PreExp = expNode;
                                 expNode = tableAccessExpNode;
+                                ReadToken();
                             }
                             else
                             {

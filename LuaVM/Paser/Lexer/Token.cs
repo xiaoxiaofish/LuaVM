@@ -12,8 +12,8 @@ namespace LuaVM.Paser
         Star,   // *
         Slash,  // /      
         Percent,//%
-        Connect,// ..
         Minus,  // -
+        Connect,// ..
         Len,// #
         Error,//~
 

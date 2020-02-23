@@ -34,7 +34,7 @@ namespace LuaVM.Codegen
         UpValue[] upValues;
         LuaValue[] constVars;
         Prototype[] childProtos;
-        public Prototype(string source, int lineDefine, int lastLineDefine, int paramsNum, bool isVararg, int maxStackSize, uint[] code, UpValue[] upValues, Prototype[] childProtos)
+        public Prototype(string source, int lineDefine, int lastLineDefine, int paramsNum, bool isVararg, int maxStackSize, uint[] code, UpValue[] upValues, Prototype[] childProtos,LuaValue[] constVar)
         {
             this.source = source;
             this.lineDefine = lineDefine;
@@ -45,6 +45,7 @@ namespace LuaVM.Codegen
             this.code = code;
             this.upValues = upValues;
             this.childProtos = childProtos;
+            constVars = constVar;
         }
         public string Source { get => source; }
         public int LineDefine { get => lineDefine; }
@@ -159,7 +160,7 @@ namespace LuaVM.Codegen
                 {
                     source = parentSource;
                 }
-                return new Prototype(source, ReadInt(), ReadInt(), ReadInt(), BitConverter.ToBoolean(datas, index++), ReadInt(), ReadCode(), ReadUpValues(),ReadPrototypes(parentSource));
+                return new Prototype(source, ReadInt(), ReadInt(), ReadInt(), BitConverter.ToBoolean(datas, index++), ReadInt(), ReadCode(), ReadUpValues(),ReadPrototypes(parentSource),null);
             }
 
             public LuaValue ReadConstLuaValue()

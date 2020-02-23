@@ -513,13 +513,13 @@ namespace LuaVM.Paser.Lexer
                     }
                 case '*':
                     {
-                        Token token = new Token(TokenType.Dawn, firstCh.ToString(), lexer.Line);
+                        Token token = new Token(TokenType.Star, firstCh.ToString(), lexer.Line);
                         lexer.AddToken(token);
                         break;
                     }
                 case '/':
                     {
-                        Token token = new Token(TokenType.Star, firstCh.ToString(), lexer.Line);
+                        Token token = new Token(TokenType.Slash, firstCh.ToString(), lexer.Line);
                         lexer.AddToken(token);
                         break;
                     }
@@ -538,6 +538,24 @@ namespace LuaVM.Paser.Lexer
                 case ':':
                     {
                         Token token = new Token(TokenType.SingleLable, firstCh.ToString(), lexer.Line);
+                        lexer.AddToken(token);
+                        break;
+                    }
+                case '.':
+                    {
+                        Token token = new Token(TokenType.Dawn, firstCh.ToString(), lexer.Line);
+                        lexer.AddToken(token);
+                        break;
+                    }
+                case '<':
+                    {
+                        Token token = new Token(TokenType.Smaller, firstCh.ToString(), lexer.Line);
+                        lexer.AddToken(token);
+                        break;
+                    }
+                case '>':
+                    {
+                        Token token = new Token(TokenType.Bigger, firstCh.ToString(), lexer.Line);
                         lexer.AddToken(token);
                         break;
                     }
@@ -654,19 +672,31 @@ namespace LuaVM.Paser.Lexer
                     }
                 case '*':
                     {
-                        Token token = new Token(TokenType.Dawn, firstCh.ToString(), lexer.Line);
+                        Token token = new Token(TokenType.Star, firstCh.ToString(), lexer.Line);
                         lexer.AddToken(token);
                         break;
                     }
                 case '/':
                     {
-                        Token token = new Token(TokenType.Star, firstCh.ToString(), lexer.Line);
+                        Token token = new Token(TokenType.Slash, firstCh.ToString(), lexer.Line);
                         lexer.AddToken(token);
                         break;
                     }
                 case '=':
                     {
                         Token token = new Token(TokenType.Assignment, firstCh.ToString(), lexer.Line);
+                        lexer.AddToken(token);
+                        break;
+                    }
+                case '<':
+                    {
+                        Token token = new Token(TokenType.Smaller, firstCh.ToString(), lexer.Line);
+                        lexer.AddToken(token);
+                        break;
+                    }
+                case '>':
+                    {
+                        Token token = new Token(TokenType.Bigger, firstCh.ToString(), lexer.Line);
                         lexer.AddToken(token);
                         break;
                     }

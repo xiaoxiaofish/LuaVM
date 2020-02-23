@@ -14,7 +14,7 @@ namespace LuaVM.VM
         private LuaAPI.LuaState luaState;
 
         /// <summary>
-        /// 将源寄存器值赋值到目标寄存器，源寄存器由a指定，目标寄存器为b，c无效
+        /// 将源寄存器值赋值到目标寄存器，源寄存器由b指定，目标寄存器为a，c无效
         /// </summary>
         /// <param name="i"></param>
         public void Move(Instruction i)
@@ -81,7 +81,7 @@ namespace LuaVM.VM
             int a = 0, bx = 0;
             i.ABX(ref a, ref bx);
             a += 1;
-            luaState.GetConstVar(a);
+            luaState.GetConstVar(bx);
             luaState.Replace(a);
         }
 
@@ -114,7 +114,7 @@ namespace LuaVM.VM
             //运算
             luaState.MathOperation(opType);
             //将结果传送到指定寄存器
-            luaState.Replace(a);
+            luaState.Replace(a + 1);
         }
 
         /// <summary>
@@ -181,7 +181,7 @@ namespace LuaVM.VM
         }
 
         /// <summary>
-        /// TestSet，判断由b操作数指定的寄存器值转换为bool类型变量后，是否与c操作数指定的bool值一样，若一样，跳过下一条指令。否则什么也不做
+        /// Test，判断由b操作数指定的寄存器值转换为bool类型变量后，是否与c操作数指定的bool值一样，若一样，跳过下一条指令。否则什么也不做
         /// </summary>
         /// <param name="i"></param>
         public void Test(Instruction i)
@@ -298,9 +298,9 @@ namespace LuaVM.VM
             i.ABC(ref a, ref b, ref c);
             luaState.GetRK(b);
             luaState.GetRK(c);
-            var key = luaState.Pop();
             var value = luaState.Pop();
-            luaState.SetTable(a, key, value);
+            var key = luaState.Pop();
+            luaState.SetTable(a + 1, key, value);
         }
 
         /// <summary>
@@ -322,7 +322,7 @@ namespace LuaVM.VM
             i.ABX(ref a, ref bx);
             a += 1;
             luaState.LoadPrototype(bx);
-            luaState.Remove(a);
+            luaState.Replace(a);
         }
 
         /// <summary>
@@ -341,7 +341,8 @@ namespace LuaVM.VM
             RunLuaClosure();
             var results = luaState.GetReturnValue(c - 1);
             luaState.PopLuaStack();
-            luaState.PushN(results, results.Length);
+            if(results != null)
+                luaState.PushN(results, results.Length);
         }
 
         private void RunLuaClosure()
@@ -355,6 +356,7 @@ namespace LuaVM.VM
                 }
                 else
                 {
+                    Console.WriteLine("代码执行完毕！");
                     return;
                 }
             }

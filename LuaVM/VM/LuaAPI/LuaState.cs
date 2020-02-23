@@ -15,13 +15,13 @@ namespace LuaVM.VM.LuaAPI
         const int registtyIndex = -maxStackSize - 1000;
         const int GRegistryIndex = 2;
         LuaValue GRegistryKey = new LuaValue(GRegistryIndex);
-        Dictionary<int,LuaValue> UpvalTable = new Dictionary<int, LuaValue>();
+        Dictionary<int, LuaValue> UpvalTable = new Dictionary<int, LuaValue>();
         LuaTable registerTable;
         LuaStack stack;
         LuaOperator LuaOperator;
         Dictionary<int, UpValue> openUpValDic;
         private Action runLuaClosureAction;
-        public int Pc { get => stack.Pc; set => stack.Pc = value;}
+        public int Pc { get => stack.Pc; set => stack.Pc = value; }
         public Action RunLuaClosureAction { get => runLuaClosureAction; set => runLuaClosureAction = value; }
 
         public LuaState(Prototype prototype)
@@ -58,7 +58,14 @@ namespace LuaVM.VM.LuaAPI
         /// <returns></returns>
         public uint Fetch()
         {
-            return stack.Closure.Prototype.Code[stack.Pc++];
+            try
+            {
+                return stack.Closure.Prototype.Code[stack.Pc++];
+            }
+            catch(Exception e)
+            {
+                throw new Exception("代码执行完毕！");
+            }
         }
 
         /// <summary>
@@ -92,7 +99,7 @@ namespace LuaVM.VM.LuaAPI
         /// <returns></returns>
         public int GetStackTop()
         {
-            return stack.Top;
+            return stack.Top - 1;
         }
 
         /// <summary>
@@ -132,9 +139,9 @@ namespace LuaVM.VM.LuaAPI
         {
             LuaValue[] values = new LuaValue[num];
             int index = num - 1;
-            for (int i = index; i > 0; i++)
+            for (int i = index; i >= 0; i--)
             {
-                values[index] = Pop();
+                values[i] = Pop();
             }
             return values;
         }
@@ -184,6 +191,8 @@ namespace LuaVM.VM.LuaAPI
         /// </summary>
         public void Replace(int index, LuaValue luaValue)
         {
+            if (GetStackTop() == index)
+            { return; }
             stack.Pop();
             stack.Set(index, luaValue);
         }
@@ -193,6 +202,10 @@ namespace LuaVM.VM.LuaAPI
         /// </summary>
         public void Replace(int index)
         {
+            if (GetStackTop() == index)
+            {
+                return;
+            }
             LuaValue luaValue = stack.Pop();
             stack.Set(index, luaValue);
         }
@@ -550,13 +563,13 @@ namespace LuaVM.VM.LuaAPI
             {
                 CallCSharpClosure(nArg, nResult, c.OValue as Closure);
             }
-            else if(c.Type == LuaValueType.Table)
+            else if (c.Type == LuaValueType.Table)
             {
                 var meta = GetMetatable(c);
-                if(meta != null)
+                if (meta != null)
                 {
                     var callMetafunc = meta[new LuaValue("__call", LuaValueType.String)];
-                    if(callMetafunc.Type == LuaValueType.Function)
+                    if (callMetafunc.Type == LuaValueType.Function)
                     {
                         //将表作为第一个参数压入栈。
                         Push(c);
@@ -594,6 +607,7 @@ namespace LuaVM.VM.LuaAPI
                 while (i > 0)
                 {
                     newStack.Push(new LuaValue());
+                    i--;
                 }
             }
             //如果函数时可变参数函数且参数个数比固定参数多，则把参数保存在栈的varlist里
@@ -756,9 +770,9 @@ namespace LuaVM.VM.LuaAPI
 
         public void SetMetatable(LuaValue val, LuaValue metatable)
         {
-            if(val.Type == LuaValueType.Table && metatable.Type == LuaValueType.Table)
+            if (val.Type == LuaValueType.Table && metatable.Type == LuaValueType.Table)
             {
-                    (val.OValue as LuaTable).Metatable = metatable.OValue as LuaTable;
+                (val.OValue as LuaTable).Metatable = metatable.OValue as LuaTable;
             }
             else
             {
@@ -777,7 +791,7 @@ namespace LuaVM.VM.LuaAPI
             else
             {
                 var key = new LuaValue("_M" + Enum.GetName(typeof(LuaValueType), val.Type), LuaValueType.String);
-                if(registerTable[key].Type != LuaValueType.Nil)
+                if (registerTable[key].Type != LuaValueType.Nil)
                 {
                     return registerTable[key].OValue as LuaTable;
                 }
@@ -811,7 +825,7 @@ namespace LuaVM.VM.LuaAPI
             Push(value1);
             Push(value2);
             Call(2, 1);
-            
+
             result = Pop();
             return true;
         }

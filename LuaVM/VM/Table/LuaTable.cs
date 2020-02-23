@@ -79,7 +79,11 @@ namespace LuaVM.VM.Table
                     {
                         //当表里没有对应的键值
                         //尝试调__newindex元方法
-                        callMetafunc(new LuaValue(this, LuaValueType.Table), key, new LuaValue("__index", LuaValueType.String));
+                        var result = callMetafunc(new LuaValue(this, LuaValueType.Table), key, new LuaValue("__index", LuaValueType.String));
+                        if(result.Type == LuaValueType.Nil)
+                        {
+                            luaTable.Add(key, value);
+                        }
                     }
                 }
                 else
