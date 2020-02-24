@@ -311,16 +311,6 @@ namespace LuaVM.Codegen
                     kRegs[i] = funcInfo.AllocReg();
                     CGExp(funcInfo, taExp.Exp, kRegs[i], 1);
                 }
-                else
-                {
-                    if((constExp = exp as ConstExpNode) != null)
-                    {
-                        if(funcInfo.VarDic1.ContainsKey(constExp.name))
-                        {
-
-                        }
-                    }
-                }
                 i++;
             }
             for (int j = 0; j < nVars; j++)
@@ -376,26 +366,37 @@ namespace LuaVM.Codegen
             foreach (var exp in node.VarList)
             {
                 ConstExpNode varNode = null;
+                int r = 0;
                 if ((varNode = exp as ConstExpNode) != null)
                 {
                     var name = varNode.name;
-                    LocalVarInfo a = null;
-                    if (name == null)
+                    LocalVarInfo info = null;
+                    if (funcInfo.VarDic1.TryGetValue(name, out info))
                     {
-                        int c = funcInfo.UpValOfIndex("_ENV");
-                        int b = 0x100 + funcInfo.IndexOfConstVar(varNode.tokenValue);
-                        funcInfo.EmitSetTabUp(c, b, vRegs[i]);
-                        i++;
-                        continue;
-                    }
-                    if (funcInfo.VarDic1.TryGetValue(name, out a))
-                    {
-                        funcInfo.EmitMove(a.RegIndex, vRegs[i]);
+                        funcInfo.EmitMove(info.RegIndex, vRegs[i]);
                     }
                     else if (funcInfo.UpValOfIndex(name) >= 0)
                     {
                         int b = funcInfo.UpValOfIndex(name);
                         funcInfo.EmitSetUpval(vRegs[i], b);
+                    }
+                    else if (funcInfo.ConstDic.TryGetValue(varNode.name, out r))
+                    {
+                        funcInfo.EmitLoadK(vRegs[i], varNode.name);
+                    }
+                    else //全局变量
+                    {
+                        int a = funcInfo.UpValOfIndex("_ENV");
+                        if (kRegs[i] <= 0)
+                        {
+                            int b = 0x100 + funcInfo.IndexOfConstVar(name);
+                            funcInfo.EmitSetTabUp(a, b, vRegs[i]);
+                        }
+                        else
+                        {
+                            funcInfo.EmitSetTabUp(a, kRegs[i], vRegs[i]);
+                        }
+
                     }
                 }
                 else
@@ -620,15 +621,15 @@ namespace LuaVM.Codegen
                 r = funcInfo.UpValOfIndex(node.name);
                 funcInfo.EmitGetUpval(a, r);
             }
-            else if (funcInfo.ConstDic.TryGetValue(node.name, out r))
-            {
-                funcInfo.EmitLoadK(a, node.name);
-            }
+            //else if (funcInfo.ConstDic.TryGetValue(node.name, out r))
+            //   {
+            //       funcInfo.EmitLoadK(a, node.name);
+            //   }
             else
             {
                 var exp = new TableAccessExpNode();
                 exp.PreExp = new ConstExpNode(new Token(TokenType.Identifier, "_ENV", -1));
-                exp.Exp = new ConstExpNode(new Token(TokenType.Identifier, node.name, -1));
+                exp.Exp = new ConstExpNode(new Token(TokenType.String, node.name, -1));
                 CGTableAccessExp(funcInfo, exp, a);
             }
         }

@@ -22,8 +22,7 @@ namespace LuaVM.Codegen
             mainFunc.IsVararg = false;
             mainFunc.ParList = new List<ConstExpNode>();
             FuncInfo funcInfo = new FuncInfo();
-            //funcInfo.AddLocalVar("_ENV");
-            //funcInfo.EmitLoadK(0, "_ENV");
+            funcInfo.UpVarDic.Add("_ENV", new UpValInfo(-1, 0, 0));
             paser.CGBlock(funcInfo, block);
             VM.LuaVM vm = new VM.LuaVM();
             //vm.e
@@ -31,14 +30,14 @@ namespace LuaVM.Codegen
             System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
             var p = ToPrototype(funcInfo);
             watch.Start();  //开始监视代码运行时间
-            try
-            {
+           // try
+           // {
                 vm.LuaMain(p);
-            }
-            catch(Exception e)
-            {
-
-            }
+          //  }
+          //  catch(Exception e)
+          //  {
+//
+          //  }
             watch.Stop();  //停止监视
             TimeSpan timespan = watch.Elapsed;  //获取当前实例测量得出的总时间
             Console.WriteLine("打开窗口代码执行时间：{0}(毫秒)", timespan.TotalMilliseconds);  //总毫秒数
@@ -62,11 +61,11 @@ namespace LuaVM.Codegen
             {
                 if (upval.Value.LocalVarRegIndex >= 0)
                 {
-                    upValues[upval.Value.LocalVarRegIndex] = new Prototype.UpValue(1, upval.Value.LocalVarRegIndex);
+                    upValues[upval.Value.Index] = new Prototype.UpValue(1, upval.Value.LocalVarRegIndex);
                 }
                 else
                 {
-                    upValues[upval.Value.LocalVarRegIndex] = new Prototype.UpValue(0, upval.Value.LocalVarRegIndex);
+                    upValues[upval.Value.Index] = new Prototype.UpValue(0, upval.Value.UpValIndex);
                 }
             }
             return upValues;

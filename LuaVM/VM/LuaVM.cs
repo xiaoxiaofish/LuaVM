@@ -350,6 +350,7 @@ namespace LuaVM.VM
             while(true)
             {
                 Instruction pc = new Instruction(luaState.Fetch());
+                Console.WriteLine(pc.InstructionName);
                 if (pc.OpCode != 38)
                 {
                     pc.Execute(this);
@@ -503,8 +504,13 @@ namespace LuaVM.VM
         {
             int a = 0, b = 0, c = 0;
             i.ABC(ref a, ref b, ref c);
+            a++;
             luaState.Push(luaState.GetUpval(b));
-            luaState.CopyTo(luaState.GetStackTop(), a + 1);
+            if (a == luaState.GetStackTop())
+                return;
+            luaState.CopyTo(luaState.GetStackTop(), a);
+            if (a == luaState.GetStackTop())
+                return;
             luaState.Pop();
         }
 
@@ -529,7 +535,8 @@ namespace LuaVM.VM
             i.ABC(ref a, ref b, ref c);
             luaState.GetRK(c);
             var table = luaState.GetUpval(b);
-            luaState.Push((table.OValue as LuaTable)[luaState.Pop()]);
+            var key = luaState.Pop();
+            luaState.Push((table.OValue as LuaTable)[key]);
             luaState.Replace(a + 1);
         }
 
@@ -544,8 +551,8 @@ namespace LuaVM.VM
             var table = luaState.GetUpval(a);
             luaState.GetRK(b);
             luaState.GetRK(c);
-            var key = luaState.Pop();
             var value = luaState.Pop();
+            var key = luaState.Pop();
             (table.OValue as LuaTable)[key] = value;
         }
 
@@ -553,11 +560,14 @@ namespace LuaVM.VM
         {
             int regsQuantity = prototype.MaxStackSize;
             luaState = new LuaAPI.LuaState(prototype);
+            luaState.InitGlobal(prototype);
             luaState.RunLuaClosureAction = RunLuaClosure;
             //OpCode returnOp = Instruction.OpCodeTable[38];
+            Console.WriteLine();
             while (true)
             {
                 Instruction pc = new Instruction(luaState.Fetch());
+                Console.WriteLine(pc.InstructionName);
                 if (pc.OpCode != 38)
                 {
                     pc.Execute(this);

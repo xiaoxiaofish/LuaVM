@@ -20,6 +20,7 @@ namespace LuaVM.VM
             if(nUpval > 0)
             {
                 UpValues = new UpValue[nUpval];
+                
             }
         }
 

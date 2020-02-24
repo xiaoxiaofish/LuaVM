@@ -84,14 +84,12 @@ namespace LuaVM.Paser
             set
             {
                 _type = value;
-                Console.WriteLine(_type);
             }
         }
         protected int line;
         public GrammarNodeType Type { get => type; }
         public GrammarNode()
         {
-            Console.WriteLine(type);
         }
 
         public void Accept(GrammarNodeVisitor visitor)

@@ -15,7 +15,7 @@ namespace LuaVM.VM.LuaAPI
         const int registtyIndex = -maxStackSize - 1000;
         const int GRegistryIndex = 2;
         LuaValue GRegistryKey = new LuaValue(GRegistryIndex);
-        Dictionary<int, LuaValue> UpvalTable = new Dictionary<int, LuaValue>();
+        Dictionary<int, LuaValue> UpvalTable;
         LuaTable registerTable;
         LuaStack stack;
         LuaOperator LuaOperator;
@@ -174,6 +174,9 @@ namespace LuaVM.VM.LuaAPI
 
         public void Push(LuaValue luaValue)
         {
+            int i = 0;
+            if (luaValue.Type == LuaValueType.Nil)
+                i = 0;
             stack.Push(luaValue);
         }
 
@@ -544,7 +547,16 @@ namespace LuaVM.VM.LuaAPI
             }
             Push(new LuaValue(c, LuaValueType.Function));
             return 0;
+        }
 
+        public void InitGlobal(Prototype prototype)
+        {
+            if (prototype.UpValues.Length > 0)
+            {
+                var globalTable = new LuaValue(new LuaTable(0,0), LuaValueType.Table);
+                registerTable[GRegistryKey] = globalTable;
+                this.stack.Closure.UpValues[0] = new UpValue(globalTable);
+            }
         }
 
         /// <summary>
@@ -755,7 +767,7 @@ namespace LuaVM.VM.LuaAPI
 
         public LuaValue GetUpval(int index)
         {
-            return UpvalTable[index];
+            return stack.Closure.UpValues[index].Value;
         }
 
         public void SetUpval(int index, LuaValue val)
